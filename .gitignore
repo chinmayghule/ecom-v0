@@ -3,5 +3,5 @@ dist
 .env
 *.log
 Dockerfile
-docker-compose.yml
 .scribble
+*.tsbuildinfo
