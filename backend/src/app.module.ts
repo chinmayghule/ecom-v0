@@ -4,14 +4,17 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { AppController } from "./app.controller";
-import { AppService } from "./app.service";
+import { AppController } from "./app.controller.js";
+import { AppService } from "./app.service.js";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: path.resolve(__dirname, "../../.env"),
+      envFilePath: [
+        path.resolve(process.cwd(), ".env"),
+        path.resolve(process.cwd(), "..", ".env"),
+      ],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

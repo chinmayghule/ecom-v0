@@ -3,3 +3,13 @@ pre-commit:
   commands:
     lint:
       run: pnpm biome check --staged --no-errors-on-unmatched
+
+pre-push:
+  parallel: true
+  commands:
+    lint:
+      run: pnpm biome check --no-errors-on-unmatched
+    build-backend:
+      run: pnpm --filter backend build
+    test-backend:
+      run: pnpm --filter backend test

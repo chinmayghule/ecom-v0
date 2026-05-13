@@ -3,7 +3,10 @@ import * as dotenv from "dotenv";
 import { DataSource } from "typeorm";
 
 dotenv.config({
-  path: path.resolve(__dirname, "../../.env"),
+  path: [
+    path.resolve(process.cwd(), ".env"),
+    path.resolve(process.cwd(), "..", ".env"),
+  ],
 });
 
 export default new DataSource({
@@ -13,7 +16,7 @@ export default new DataSource({
   username: process.env.DATABASE_USER,
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
-  entities: [`${__dirname}/**/*.entity.{ts,js}`],
-  migrations: [`${__dirname}/migrations/*.{ts,js}`],
+  entities: [`${process.cwd()}/src/**/*.entity.{ts,js}`],
+  migrations: [`${process.cwd()}/src/migrations/*.{ts,js}`],
   migrationsTableName: "migrations",
 });
