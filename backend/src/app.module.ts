@@ -26,7 +26,7 @@ import { AppService } from "./app.service.js";
         password: config.get<string>("DATABASE_PASSWORD"),
         database: config.get<string>("DATABASE_NAME"),
         autoLoadEntities: true,
-        synchronize: false,
+        synchronize: config.get<string>("NODE_ENV") === "test",
         migrationsRun: false,
         logging: true,
       }),
