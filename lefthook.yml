@@ -8,7 +8,7 @@ pre-push:
   parallel: true
   commands:
     lint:
-      run: pnpm biome check --no-errors-on-unmatched
+      run: pnpm biome check --no-errors-on-unmatched backend/src backend/test frontend shared biome.json lefthook.yml
     build-backend:
       run: pnpm --filter backend build
     test-backend:
