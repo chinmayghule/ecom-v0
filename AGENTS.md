@@ -2,7 +2,7 @@
 
 This is a **pnpm monorepo** (backend, frontend, shared) for a resume-building e-commerce project.
 
-**Authoritative project brief:** `./official_ecom_proposal.md`
+**Authoritative project brief:** `./ecom_project_master.md`
 
 ---
 
