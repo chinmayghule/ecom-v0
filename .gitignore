@@ -8,3 +8,7 @@ Dockerfile
 .scribble
 *.tsbuildinfo
 .review
+
+# PAM — internal tooling, never committed
+.pam/
+server.js

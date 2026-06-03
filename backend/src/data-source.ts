@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import path from "node:path";
 import * as dotenv from "dotenv";
 import { DataSource } from "typeorm";

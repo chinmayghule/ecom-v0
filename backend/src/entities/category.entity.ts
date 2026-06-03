@@ -7,31 +7,16 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 
-export enum UserRole {
-  CUSTOMER = "customer",
-  SELLER = "seller",
-  ADMIN = "admin",
-}
-
-@Entity("users")
-export class User {
+@Entity("categories")
+export class Category {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
   @Column({ unique: true })
-  email!: string;
-
-  @Column()
-  passwordHash!: string;
-
-  @Column({ type: "enum", enum: UserRole, default: UserRole.CUSTOMER })
-  role!: UserRole;
-
-  @Column()
   name!: string;
 
-  @Column({ nullable: true, type: "varchar" })
-  contactNumber: string | null = null;
+  @Column({ nullable: true, type: "text" })
+  description: string | null = null;
 
   @CreateDateColumn()
   createdAt!: Date;

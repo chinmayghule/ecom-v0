@@ -6,6 +6,19 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AppController } from "./app.controller.js";
 import { AppService } from "./app.service.js";
+import {
+  Address,
+  Cart,
+  CartItem,
+  Category,
+  Inventory,
+  Order,
+  OrderItem,
+  Product,
+  SellerProfile,
+  Session,
+  User,
+} from "./entities/index.js";
 
 @Module({
   imports: [
@@ -25,7 +38,19 @@ import { AppService } from "./app.service.js";
         username: config.get<string>("DATABASE_USER"),
         password: config.get<string>("DATABASE_PASSWORD"),
         database: config.get<string>("DATABASE_NAME"),
-        autoLoadEntities: true,
+        entities: [
+          User,
+          Product,
+          Category,
+          Session,
+          Address,
+          SellerProfile,
+          Inventory,
+          Cart,
+          CartItem,
+          Order,
+          OrderItem,
+        ],
         synchronize: false,
         migrationsRun: config.get<string>("NODE_ENV") === "test",
         logging: true,
