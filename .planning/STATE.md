@@ -12,4 +12,5 @@
 
 | Phase | Status | Context | Plans |
 |-------|--------|---------|-------|
+| 00-PAM Dashboard & Tooling | context_gathered | 00-CONTEXT.md | none |
 | 1-Auth Module & RBAC | context_gathered | 01-CONTEXT.md | none |
