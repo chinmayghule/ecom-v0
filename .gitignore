@@ -11,4 +11,4 @@ Dockerfile
 
 # PAM — internal tooling, never committed
 .pam/
-server.js
+.planning/
