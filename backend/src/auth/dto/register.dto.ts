@@ -1,3 +1,4 @@
+import { Transform } from "class-transformer";
 import {
   IsEmail,
   IsNotEmpty,
@@ -8,6 +9,9 @@ import {
 } from "class-validator";
 
 export class RegisterDto {
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.toLowerCase() : value,
+  )
   @IsEmail()
   @IsNotEmpty()
   @MaxLength(255)

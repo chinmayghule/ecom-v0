@@ -1,4 +1,4 @@
-import { ConflictException } from "@nestjs/common";
+import { ConflictException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test } from "@nestjs/testing";
@@ -228,39 +228,23 @@ describe("AuthService", () => {
   });
 
   describe("refreshAccessToken", () => {
-    it("returns new access token for valid refresh token", async () => {
+    it("returns new access token for valid user id", async () => {
       const user = mockUser();
-      vi.mocked(jwtService.verify).mockReturnValue({ sub: "user-1" });
       vi.mocked(usersService.findById).mockResolvedValue(user);
       vi.mocked(jwtService.sign).mockReturnValue("new-access-token");
 
-      const result = await authService.refreshAccessToken(
-        "valid-refresh-token",
-      );
+      const result = await authService.refreshAccessToken("user-1");
 
       expect(result).toEqual({ accessToken: "new-access-token" });
-      expect(jwtService.verify).toHaveBeenCalledWith("valid-refresh-token", {
-        secret: "test-refresh-secret",
-      });
+      expect(usersService.findById).toHaveBeenCalledWith("user-1");
     });
 
-    it("throws on invalid refresh token", async () => {
-      vi.mocked(jwtService.verify).mockImplementation(() => {
-        throw new Error("jwt malformed");
-      });
-
-      await expect(
-        authService.refreshAccessToken("invalid-token"),
-      ).rejects.toThrow("Invalid or expired refresh token");
-    });
-
-    it("throws when user not found", async () => {
-      vi.mocked(jwtService.verify).mockReturnValue({ sub: "nonexistent" });
+    it("throws UnauthorizedException when user not found", async () => {
       vi.mocked(usersService.findById).mockResolvedValue(null);
 
       await expect(
-        authService.refreshAccessToken("valid-token"),
-      ).rejects.toThrow("User not found");
+        authService.refreshAccessToken("nonexistent"),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 

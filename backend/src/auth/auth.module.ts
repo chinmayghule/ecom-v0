@@ -10,6 +10,7 @@ import { AuthService } from "./auth.service.js";
 import { ResetToken } from "./entities/reset-token.entity.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
 import { PoliciesGuard } from "./guards/policies.guard.js";
+import { RefreshTokenGuard } from "./guards/refresh-token.guard.js";
 import { RolesGuard } from "./guards/roles.guard.js";
 import { HashService } from "./hash.service.js";
 import {
@@ -48,6 +49,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy.js";
     ResetTokenService,
     JwtStrategy,
     JwtAuthGuard,
+    RefreshTokenGuard,
     RolesGuard,
     PoliciesGuard,
     ProductPolicy,

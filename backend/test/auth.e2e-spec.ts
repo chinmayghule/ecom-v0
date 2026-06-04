@@ -64,7 +64,7 @@ describe("Auth (e2e)", () => {
       );
       expect(refreshCookie).toBeDefined();
       expect(refreshCookie).toContain("HttpOnly");
-      expect(refreshCookie).toContain("Path=/auth/refresh");
+      expect(refreshCookie).toContain("Path=/");
     });
 
     it("rejects duplicate email", async () => {
@@ -181,9 +181,12 @@ describe("Auth (e2e)", () => {
         .post("/auth/login")
         .send({ email: testUser.email, password: testUser.password });
 
+      const cookies = loginRes.headers["set-cookie"];
+
       const res = await request(getServer())
         .get("/auth/me")
         .set("Authorization", `Bearer ${loginRes.body.accessToken}`)
+        .set("Cookie", cookies)
         .expect(200);
 
       expect(res.body).toMatchObject({
@@ -219,6 +222,7 @@ describe("Auth (e2e)", () => {
       const res = await request(getServer())
         .get("/auth/sessions")
         .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", cookies)
         .expect(200);
 
       expect(Array.isArray(res.body)).toBe(true);
@@ -232,13 +236,15 @@ describe("Auth (e2e)", () => {
     it("DELETE /auth/sessions/:id revokes a session", async () => {
       const sessionsRes = await request(getServer())
         .get("/auth/sessions")
-        .set("Authorization", `Bearer ${accessToken}`);
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", cookies);
 
       const sessionId = sessionsRes.body[0].id;
 
       const res = await request(getServer())
         .delete(`/auth/sessions/${sessionId}`)
         .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", cookies)
         .expect(200);
 
       expect(res.body).toEqual({ message: "Session revoked" });
@@ -252,6 +258,133 @@ describe("Auth (e2e)", () => {
         .expect(201);
 
       expect(res.body).toEqual({ message: "All other sessions revoked" });
+    });
+  });
+
+  describe("Integration: session lifecycle", () => {
+    const lifecycleUser = {
+      email: "lifecycle-test@example.com",
+      password: "LifecyclePass1!",
+      name: "Lifecycle Test",
+    };
+
+    it("logout blocks all protected routes", async () => {
+      const registerRes = await request(getServer())
+        .post("/auth/register")
+        .send(lifecycleUser)
+        .expect(201);
+
+      const accessToken = registerRes.body.accessToken;
+      const cookies = registerRes.headers["set-cookie"];
+
+      const sessionsBefore = await request(getServer())
+        .get("/auth/sessions")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", cookies)
+        .expect(200);
+
+      expect(sessionsBefore.body.length).toBe(1);
+
+      await request(getServer())
+        .post("/auth/logout")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", cookies)
+        .expect(201);
+
+      await request(getServer())
+        .get("/auth/sessions")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", cookies)
+        .expect(401);
+
+      await request(getServer())
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", cookies)
+        .expect(401);
+
+      await request(getServer())
+        .post("/auth/refresh")
+        .set("Cookie", cookies)
+        .expect(401);
+    });
+
+    it("revoking a session prevents token refresh", async () => {
+      const loginRes = await request(getServer())
+        .post("/auth/login")
+        .send({
+          email: lifecycleUser.email,
+          password: lifecycleUser.password,
+        });
+
+      const accessToken = loginRes.body.accessToken;
+      const cookies = loginRes.headers["set-cookie"];
+
+      const sessionsRes = await request(getServer())
+        .get("/auth/sessions")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", cookies)
+        .expect(200);
+
+      const sessionId = sessionsRes.body[0].id;
+
+      await request(getServer())
+        .delete(`/auth/sessions/${sessionId}`)
+        .set("Authorization", `Bearer ${accessToken}`)
+        .set("Cookie", cookies)
+        .expect(200);
+
+      await request(getServer())
+        .post("/auth/refresh")
+        .set("Cookie", cookies)
+        .expect(401);
+    });
+
+    it("refresh returns 401 without the refresh token cookie", async () => {
+      await request(getServer())
+        .post("/auth/refresh")
+        .expect(401);
+    });
+  });
+
+  describe("Integration: email normalization", () => {
+    const mixedEmail = "MixedCase@Example.Com";
+    const lowerEmail = "mixedcase@example.com";
+    const password = "NormalPass123!";
+
+    afterAll(async () => {
+      await dataSource.query(`DELETE FROM sessions`);
+      await dataSource.query(`DELETE FROM users`);
+    });
+
+    it("register stores email in lowercase", async () => {
+      const res = await request(getServer())
+        .post("/auth/register")
+        .send({ email: mixedEmail, password, name: "Mixed Case" })
+        .expect(201);
+
+      expect(res.body).toEqual({ accessToken: expect.any(String) });
+    });
+
+    it("login works with lowercased email", async () => {
+      await request(getServer())
+        .post("/auth/login")
+        .send({ email: lowerEmail, password })
+        .expect(201);
+    });
+
+    it("login works with same email in different case", async () => {
+      await request(getServer())
+        .post("/auth/login")
+        .send({ email: "MIXEDCASE@EXAMPLE.COM", password })
+        .expect(201);
+    });
+
+    it("rejects registration of same email with different case", async () => {
+      await request(getServer())
+        .post("/auth/register")
+        .send({ email: "mixedcase@example.com", password, name: "Duplicate" })
+        .expect(409);
     });
   });
 

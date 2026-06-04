@@ -22,13 +22,14 @@ import { RegisterDto } from "./dto/register.dto.js";
 import { ResetPasswordDto } from "./dto/reset-password.dto.js";
 import { SessionResponseDto } from "./dto/session-response.dto.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
+import { RefreshTokenGuard } from "./guards/refresh-token.guard.js";
 import { SessionService } from "./session.service.js";
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "strict" as const,
-  path: "/auth/refresh",
+  path: "/",
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
@@ -68,18 +69,13 @@ export class AuthController {
     return { accessToken };
   }
 
+  @UseGuards(RefreshTokenGuard)
   @Post("refresh")
-  async refresh(@Req() req: any, @Res({ passthrough: true }) res: Response) {
-    const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken) {
-      throw new UnauthorizedException("Refresh token not found");
-    }
-    const { accessToken } =
-      await this.authService.refreshAccessToken(refreshToken);
-    return { accessToken };
+  async refresh(@CurrentUser() user: { id: string }) {
+    return this.authService.refreshAccessToken(user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
   @Post("logout")
   async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.refreshToken;
@@ -88,7 +84,7 @@ export class AuthController {
     return { message: "Logged out successfully" };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
   @Get("me")
   async getProfile(@CurrentUser() user: { id: string }) {
     const found = await this.usersService.findById(user.id);
@@ -97,7 +93,7 @@ export class AuthController {
     return profile;
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
   @Get("sessions")
   async getSessions(@CurrentUser() user: User) {
     const sessions = await this.sessionService.findByUserId(user.id);
@@ -114,14 +110,14 @@ export class AuthController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
   @Delete("sessions/:id")
   async revokeSession(@CurrentUser() user: User, @Param("id") id: string) {
     await this.sessionService.revokeSession(id, user.id);
     return { message: "Session revoked" };
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
   @Post("sessions/revoke-all")
   async revokeAllSessions(
     @Req() req: any,

@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger } from "@nestjs/common";
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { User, UserRole } from "../entities/user.entity.js";
@@ -47,17 +52,9 @@ export class AuthService {
     return this.generateTokenPair(user, userAgent, ip);
   }
 
-  async refreshAccessToken(refreshToken: string) {
-    let payload: { sub: string };
-    try {
-      payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
-      }) as { sub: string };
-    } catch {
-      throw new Error("Invalid or expired refresh token");
-    }
-    const user = await this.usersService.findById(payload.sub);
-    if (!user) throw new Error("User not found");
+  async refreshAccessToken(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException("User not found");
     return { accessToken: this.generateAccessToken(user) };
   }
 
