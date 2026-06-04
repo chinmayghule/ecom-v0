@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as argon2 from "argon2";
-import { IsNull, Not, Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { ResetToken } from "./entities/reset-token.entity.js";
 
 @Injectable()
@@ -10,12 +11,17 @@ export class ResetTokenService {
   constructor(
     @InjectRepository(ResetToken)
     private readonly repo: Repository<ResetToken>,
+    private readonly configService: ConfigService,
   ) {}
 
   async create(userId: string): Promise<{ rawToken: string }> {
     const rawToken = crypto.randomBytes(32).toString("hex");
     const hashedToken = await argon2.hash(rawToken);
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const expiresInMs = parseInt(
+      this.configService.get("RESET_TOKEN_EXPIRATION_MS", "3600000"),
+      10,
+    );
+    const expiresAt = new Date(Date.now() + expiresInMs);
 
     await this.repo.save(
       this.repo.create({

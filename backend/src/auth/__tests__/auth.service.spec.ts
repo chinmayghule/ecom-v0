@@ -1,7 +1,7 @@
 import { ConflictException } from "@nestjs/common";
-import { Test } from "@nestjs/testing";
-import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { Test } from "@nestjs/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { User, UserRole } from "../../entities/user.entity.js";
 import { UsersService } from "../../users/users.service.js";
@@ -62,16 +62,16 @@ describe("AuthService", () => {
         {
           provide: ConfigService,
           useValue: {
-            get: vi.fn().mockImplementation(
-              (key: string, defaultValue?: string) => {
+            get: vi
+              .fn()
+              .mockImplementation((key: string, defaultValue?: string) => {
                 const config: Record<string, string> = {
                   JWT_SECRET: "test-secret",
                   JWT_REFRESH_SECRET: "test-refresh-secret",
                   JWT_REFRESH_EXPIRATION_MS: "604800000",
                 };
                 return config[key] ?? defaultValue ?? null;
-              },
-            ),
+              }),
           },
         },
         {
@@ -106,9 +106,7 @@ describe("AuthService", () => {
       );
 
       expect(result).toEqual(user);
-      expect(usersService.findByEmail).toHaveBeenCalledWith(
-        "test@example.com",
-      );
+      expect(usersService.findByEmail).toHaveBeenCalledWith("test@example.com");
       expect(hashService.verifyPassword).toHaveBeenCalledWith(
         "hashed_password",
         "password",
@@ -170,7 +168,6 @@ describe("AuthService", () => {
         email: "test@example.com",
         passwordHash: "hashed_new_password",
         name: "Test User",
-        role: undefined,
       });
     });
 
@@ -185,28 +182,6 @@ describe("AuthService", () => {
         }),
       ).rejects.toThrow(ConflictException);
     });
-
-    it("registers with optional role", async () => {
-      const user = mockUser({ role: UserRole.SELLER });
-      vi.mocked(usersService.findByEmail).mockResolvedValue(null);
-      vi.mocked(hashService.hashPassword).mockResolvedValue("hashed_pass");
-      vi.mocked(usersService.create).mockResolvedValue(user);
-      vi.mocked(sessionService.createSession).mockResolvedValue({} as any);
-
-      const result = await authService.register({
-        email: "seller@example.com",
-        password: "strongPass123",
-        role: UserRole.SELLER,
-      });
-
-      expect(usersService.create).toHaveBeenCalledWith({
-        email: "seller@example.com",
-        passwordHash: "hashed_pass",
-        name: undefined,
-        role: UserRole.SELLER,
-      });
-      expect(result.user.role).toBe(UserRole.SELLER);
-    });
   });
 
   describe("login", () => {
@@ -214,11 +189,7 @@ describe("AuthService", () => {
       const user = mockUser();
       vi.mocked(sessionService.createSession).mockResolvedValue({} as any);
 
-      const result = await authService.login(
-        user,
-        "Mozilla/5.0",
-        "127.0.0.1",
-      );
+      const result = await authService.login(user, "Mozilla/5.0", "127.0.0.1");
 
       expect(result).toEqual({
         accessToken: "mock-access-token",
@@ -263,7 +234,9 @@ describe("AuthService", () => {
       vi.mocked(usersService.findById).mockResolvedValue(user);
       vi.mocked(jwtService.sign).mockReturnValue("new-access-token");
 
-      const result = await authService.refreshAccessToken("valid-refresh-token");
+      const result = await authService.refreshAccessToken(
+        "valid-refresh-token",
+      );
 
       expect(result).toEqual({ accessToken: "new-access-token" });
       expect(jwtService.verify).toHaveBeenCalledWith("valid-refresh-token", {
@@ -294,7 +267,9 @@ describe("AuthService", () => {
   describe("logout", () => {
     it("revokes session when refresh token matches", async () => {
       const session = { id: "session-1", refreshToken: "rt-1" };
-      vi.mocked(sessionService.findByUserId).mockResolvedValue([session] as any);
+      vi.mocked(sessionService.findByUserId).mockResolvedValue([
+        session,
+      ] as any);
 
       await authService.logout("user-1", "rt-1");
 

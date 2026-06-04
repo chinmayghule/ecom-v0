@@ -5,8 +5,7 @@ import {
   Logger,
   UnauthorizedException,
 } from "@nestjs/common";
-import type { ModuleRef } from "@nestjs/core";
-import { Reflector } from "@nestjs/core";
+import { ModuleRef, Reflector } from "@nestjs/core";
 import { CHECK_POLICIES_KEY } from "../decorators/check-policies.decorator.js";
 import type { PolicyHandler } from "../interfaces/policy-handler.interface.js";
 

@@ -15,8 +15,9 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // cors - restricted to front-end origin later.
-  // for now, allow all for development.
-  app.enableCors({ origin: "http://localhost:3000", credentials: true });
+  const corsOrigin =
+    process.env.CORS_ORIGIN?.split(",") ?? "http://localhost:3000";
+  app.enableCors({ origin: corsOrigin, credentials: true });
 
   // global validation pipe with whitelist to strip out any properties that are not defined in the DTOs.
   app.useGlobalPipes(

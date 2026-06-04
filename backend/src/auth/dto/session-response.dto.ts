@@ -1,3 +1,5 @@
+import { type DeviceInfo } from "../../entities/session.entity.js";
+
 export class SessionResponseDto {
   id!: string;
 
@@ -5,7 +7,7 @@ export class SessionResponseDto {
 
   ipAddress: string | null = null;
 
-  deviceInfo: Record<string, any> | null = null;
+  deviceInfo: DeviceInfo | null = null;
 
   lastActiveAt: Date | null = null;
 

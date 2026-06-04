@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Session } from "../entities/session.entity.js";
+import { type DeviceInfo, Session } from "../entities/session.entity.js";
 
 @Injectable()
 export class SessionService {
@@ -16,7 +16,7 @@ export class SessionService {
     expiresAt: Date,
     userAgent?: string,
     ipAddress?: string,
-    deviceInfo?: Record<string, any>,
+    deviceInfo?: DeviceInfo,
   ): Promise<Session> {
     const session = this.sessionRepo.create({
       user: { id: userId } as any,
@@ -91,7 +91,7 @@ export class SessionService {
     });
   }
 
-  parseDeviceInfo(userAgent: string): Record<string, any> {
+  parseDeviceInfo(userAgent: string): DeviceInfo {
     const osPatterns: Record<string, RegExp> = {
       iOS: /iPhone|iPad|iPod/i,
       Android: /Android/i,

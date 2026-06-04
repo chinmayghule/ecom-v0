@@ -3,12 +3,29 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { UserRole } from "../../../entities/user.entity.js";
 import { SellerProfilePolicy } from "../seller-profile.policy.js";
 
-const adminUser = { id: "admin-1", role: UserRole.ADMIN } as any;
-const profileOwner = { id: "user-1", role: UserRole.SELLER } as any;
-const otherUser = { id: "user-2", role: UserRole.CUSTOMER } as any;
+interface TestUser {
+  id: string;
+  role: UserRole;
+}
 
-const ownedProfile = { id: "profile-1", userId: "user-1" } as any;
-const otherProfile = { id: "profile-2", userId: "user-2" } as any;
+interface TestProfile {
+  id: string;
+  userId: string;
+}
+
+const makeUser = (id: string, role: UserRole): TestUser => ({ id, role });
+
+const makeProfile = (id: string, userId: string): TestProfile => ({
+  id,
+  userId,
+});
+
+const adminUser = makeUser("admin-1", UserRole.ADMIN);
+const profileOwner = makeUser("user-1", UserRole.SELLER);
+const otherUser = makeUser("user-2", UserRole.CUSTOMER);
+
+const ownedProfile = makeProfile("profile-1", "user-1");
+const otherProfile = makeProfile("profile-2", "user-2");
 
 describe("SellerProfilePolicy", () => {
   let policy: SellerProfilePolicy;

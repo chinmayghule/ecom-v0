@@ -3,25 +3,32 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { UserRole } from "../../../entities/user.entity.js";
 import { OrderPolicy } from "../order.policy.js";
 
-const adminUser = { id: "admin-1", role: UserRole.ADMIN } as any;
-const orderOwner = { id: "user-1", role: UserRole.CUSTOMER } as any;
-const otherUser = { id: "user-2", role: UserRole.CUSTOMER } as any;
+interface TestUser {
+  id: string;
+  role: UserRole;
+}
 
-const ownedOrder = {
-  id: "order-1",
-  userId: "user-1",
-  status: "pending",
-} as any;
-const otherOrder = {
-  id: "order-2",
-  userId: "user-2",
-  status: "pending",
-} as any;
-const completedOrder = {
-  id: "order-3",
-  userId: "user-1",
-  status: "completed",
-} as any;
+interface TestOrder {
+  id: string;
+  userId: string;
+  status: string;
+}
+
+const makeUser = (id: string, role: UserRole): TestUser => ({ id, role });
+
+const makeOrder = (id: string, userId: string, status: string): TestOrder => ({
+  id,
+  userId,
+  status,
+});
+
+const adminUser = makeUser("admin-1", UserRole.ADMIN);
+const orderOwner = makeUser("user-1", UserRole.CUSTOMER);
+const otherUser = makeUser("user-2", UserRole.CUSTOMER);
+
+const ownedOrder = makeOrder("order-1", "user-1", "pending");
+const otherOrder = makeOrder("order-2", "user-2", "pending");
+const completedOrder = makeOrder("order-3", "user-1", "completed");
 
 describe("OrderPolicy", () => {
   let policy: OrderPolicy;

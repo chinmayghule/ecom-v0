@@ -3,42 +3,33 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { UserRole } from "../../../entities/user.entity.js";
 import { ProductPolicy } from "../product.policy.js";
 
-const adminUser = {
-  id: "admin-1",
-  role: UserRole.ADMIN,
-  email: "admin@test.com",
-} as any;
-const sellerUser = {
-  id: "seller-1",
-  role: UserRole.SELLER,
-  email: "seller@test.com",
-} as any;
-const otherSellerUser = {
-  id: "seller-2",
-  role: UserRole.SELLER,
-  email: "other@test.com",
-} as any;
-const customerUser = {
-  id: "cust-1",
-  role: UserRole.CUSTOMER,
-  email: "cust@test.com",
-} as any;
+interface TestUser {
+  id: string;
+  role: UserRole;
+}
 
-const ownedProduct = {
-  id: "prod-1",
-  sellerId: "seller-1",
-  isActive: true,
-} as any;
-const otherProduct = {
-  id: "prod-2",
-  sellerId: "seller-2",
-  isActive: true,
-} as any;
-const inactiveProduct = {
-  id: "prod-3",
-  sellerId: "seller-2",
-  isActive: false,
-} as any;
+interface TestProduct {
+  id: string;
+  sellerId: string;
+  isActive: boolean;
+}
+
+const makeUser = (id: string, role: UserRole): TestUser => ({ id, role });
+
+const makeProduct = (
+  id: string,
+  sellerId: string,
+  isActive: boolean,
+): TestProduct => ({ id, sellerId, isActive });
+
+const adminUser = makeUser("admin-1", UserRole.ADMIN);
+const sellerUser = makeUser("seller-1", UserRole.SELLER);
+const otherSellerUser = makeUser("seller-2", UserRole.SELLER);
+const customerUser = makeUser("cust-1", UserRole.CUSTOMER);
+
+const ownedProduct = makeProduct("prod-1", "seller-1", true);
+const otherProduct = makeProduct("prod-2", "seller-2", true);
+const inactiveProduct = makeProduct("prod-3", "seller-2", false);
 
 describe("ProductPolicy", () => {
   let policy: ProductPolicy;
@@ -68,8 +59,9 @@ describe("ProductPolicy", () => {
 
   describe("canView", () => {
     it("allows anyone to view active products", () => {
-      expect(policy.canView(null as any, ownedProduct)).toBe(true);
+      expect(policy.canView(null, ownedProduct)).toBe(true);
       expect(policy.canView(customerUser, ownedProduct)).toBe(true);
+      expect(policy.canView(adminUser, ownedProduct)).toBe(true);
     });
     it("allows owner to view inactive products", () => {
       expect(policy.canView(otherSellerUser, inactiveProduct)).toBe(true);

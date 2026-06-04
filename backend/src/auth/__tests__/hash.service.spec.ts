@@ -55,15 +55,15 @@ describe("HashService", () => {
     });
 
     it("throws on empty hash", async () => {
-      await expect(
-        service.verifyPassword("", "password"),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.verifyPassword("", "password")).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("throws on empty plain", async () => {
-      await expect(
-        service.verifyPassword("hashed_abc", ""),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.verifyPassword("hashed_abc", "")).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

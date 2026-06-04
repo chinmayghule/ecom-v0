@@ -3,12 +3,26 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { UserRole } from "../../../entities/user.entity.js";
 import { CartPolicy } from "../cart.policy.js";
 
-const adminUser = { id: "admin-1", role: UserRole.ADMIN } as any;
-const cartOwner = { id: "user-1", role: UserRole.CUSTOMER } as any;
-const otherUser = { id: "user-2", role: UserRole.CUSTOMER } as any;
+interface TestUser {
+  id: string;
+  role: UserRole;
+}
 
-const ownedCart = { id: "cart-1", userId: "user-1" } as any;
-const otherCart = { id: "cart-2", userId: "user-2" } as any;
+interface TestCart {
+  id: string;
+  userId: string;
+}
+
+const makeUser = (id: string, role: UserRole): TestUser => ({ id, role });
+
+const makeCart = (id: string, userId: string): TestCart => ({ id, userId });
+
+const adminUser = makeUser("admin-1", UserRole.ADMIN);
+const cartOwner = makeUser("user-1", UserRole.CUSTOMER);
+const otherUser = makeUser("user-2", UserRole.CUSTOMER);
+
+const ownedCart = makeCart("cart-1", "user-1");
+const otherCart = makeCart("cart-2", "user-2");
 
 describe("CartPolicy", () => {
   let policy: CartPolicy;

@@ -1,13 +1,11 @@
 import {
   IsEmail,
-  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from "class-validator";
-import { UserRole } from "../../entities/user.entity.js";
 
 export class RegisterDto {
   @IsEmail()
@@ -24,8 +22,4 @@ export class RegisterDto {
   @IsOptional()
   @MaxLength(100)
   name?: string;
-
-  @IsEnum(UserRole)
-  @IsOptional()
-  role?: UserRole;
 }

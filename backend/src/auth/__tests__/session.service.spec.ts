@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Repository } from "typeorm";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Session } from "../../entities/session.entity.js";
 import { SessionService } from "../session.service.js";
 
