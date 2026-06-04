@@ -9,6 +9,10 @@ Dockerfile
 *.tsbuildinfo
 .review
 
+# graphify — knowledge graph output, never committed
+graphify-out/
+
 # PAM — internal tooling, never committed
 .pam/
 .planning/
+cli.sh  # safety net: root-level symlink to .pam/cli.sh, never tracked

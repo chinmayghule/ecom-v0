@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common/pipes/validation.pipe.js";
 import { NestFactory } from "@nestjs/core";
+import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { AppModule } from "./app.module.js";
 
@@ -9,6 +10,9 @@ async function bootstrap() {
 
   // security headers
   app.use(helmet());
+
+  // cookie-parser for reading httpOnly refresh token cookies
+  app.use(cookieParser());
 
   // cors - restricted to front-end origin later.
   // for now, allow all for development.
