@@ -21,8 +21,8 @@ Run all commands from the package directory (`backend/`, `frontend/`, etc.), not
 | Command | What |
 |---------|------|
 | `pnpm start:dev` | Dev server (file watch) |
-| `pnpm test` | Jest unit tests (`src/**/*.spec.ts`) |
-| `pnpm test:e2e` | E2E tests (`test/jest-e2e.json`) |
+| `pnpm test` | Vitest unit tests (`src/**/*.spec.ts`) |
+| `pnpm test:e2e` | E2E tests (`./vitest.e2e.config.ts`) |
 | `pnpm test:cov` | Coverage report |
 | `pnpm migration:generate -- -d src/data-source.ts src/migrations/<name>` | Generate migration |
 | `pnpm migration:run` | Apply pending |
@@ -85,3 +85,20 @@ Lefthook runs `pnpm biome check --staged`. Failing lint blocks commit.
 ### Adding deps
 
 Use `pnpm add <pkg> --filter <workspace-package>` (not `npm install` or bare `pnpm add`).
+
+---
+
+## Postman API Collection
+
+The Postman collection `ecom-v0` is managed at https://api.getpostman.com/collections.
+**API key:** stored in `.env.local` at repo root (loaded automatically via `source`).
+
+### Workflow
+
+Whenever new API endpoints are added and **all tests pass**, ask the user:
+> "New endpoints added. Should I sync them to the Postman collection?"
+
+If approved:
+1. Build the updated collection JSON payload (v2.1.0 schema).
+2. POST to `https://api.getpostman.com/collections` with header `X-Api-Key: $(grep POSTMAN_API_KEY .env.local | cut -d= -f2)`.
+3. Confirm success.

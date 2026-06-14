@@ -6,6 +6,8 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AppController } from "./app.controller.js";
 import { AppService } from "./app.service.js";
+import { AuthModule } from "./auth/auth.module.js";
+import { ResetToken } from "./auth/entities/reset-token.entity.js";
 import {
   Address,
   Cart,
@@ -50,13 +52,16 @@ import {
           CartItem,
           Order,
           OrderItem,
+          ResetToken,
         ],
         synchronize: false,
         migrationsRun: config.get<string>("NODE_ENV") === "test",
-        logging: true,
+        migrations: [`${process.cwd()}/src/migrations/*.{ts,js}`],
+        logging: config.get<string>("NODE_ENV") !== "test",
       }),
       inject: [ConfigService],
     }),
+    AuthModule,
     ThrottlerModule.forRoot([
       {
         ttl: 60000,

@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common/pipes/validation.pipe.js";
 import { NestFactory } from "@nestjs/core";
+import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { AppModule } from "./app.module.js";
 
@@ -10,9 +11,13 @@ async function bootstrap() {
   // security headers
   app.use(helmet());
 
+  // cookie-parser for reading httpOnly refresh token cookies
+  app.use(cookieParser());
+
   // cors - restricted to front-end origin later.
-  // for now, allow all for development.
-  app.enableCors({ origin: "http://localhost:3000", credentials: true });
+  const corsOrigin =
+    process.env.CORS_ORIGIN?.split(",") ?? "http://localhost:3000";
+  app.enableCors({ origin: corsOrigin, credentials: true });
 
   // global validation pipe with whitelist to strip out any properties that are not defined in the DTOs.
   app.useGlobalPipes(
