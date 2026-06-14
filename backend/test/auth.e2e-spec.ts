@@ -3,8 +3,8 @@ import { Test } from "@nestjs/testing";
 import * as argon2 from "argon2";
 import cookieParser from "cookie-parser";
 import request from "supertest";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { DataSource } from "typeorm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AppModule } from "../src/app.module.js";
 import { PoliciesGuard } from "../src/auth/guards/policies.guard.js";
 
@@ -145,9 +145,7 @@ describe("Auth (e2e)", () => {
     });
 
     it("returns 401 without cookie", async () => {
-      await request(getServer())
-        .post("/auth/refresh")
-        .expect(401);
+      await request(getServer()).post("/auth/refresh").expect(401);
     });
   });
 
@@ -170,9 +168,7 @@ describe("Auth (e2e)", () => {
     });
 
     it("returns 401 without token", async () => {
-      await request(getServer())
-        .post("/auth/logout")
-        .expect(401);
+      await request(getServer()).post("/auth/logout").expect(401);
     });
   });
 
@@ -200,9 +196,7 @@ describe("Auth (e2e)", () => {
     });
 
     it("returns 401 without token", async () => {
-      await request(getServer())
-        .get("/auth/me")
-        .expect(401);
+      await request(getServer()).get("/auth/me").expect(401);
     });
   });
 
@@ -311,12 +305,10 @@ describe("Auth (e2e)", () => {
     });
 
     it("revoking a session prevents token refresh", async () => {
-      const loginRes = await request(getServer())
-        .post("/auth/login")
-        .send({
-          email: lifecycleUser.email,
-          password: lifecycleUser.password,
-        });
+      const loginRes = await request(getServer()).post("/auth/login").send({
+        email: lifecycleUser.email,
+        password: lifecycleUser.password,
+      });
 
       const accessToken = loginRes.body.accessToken;
       const cookies = loginRes.headers["set-cookie"];
@@ -342,9 +334,7 @@ describe("Auth (e2e)", () => {
     });
 
     it("refresh returns 401 without the refresh token cookie", async () => {
-      await request(getServer())
-        .post("/auth/refresh")
-        .expect(401);
+      await request(getServer()).post("/auth/refresh").expect(401);
     });
   });
 

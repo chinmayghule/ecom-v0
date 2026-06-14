@@ -93,7 +93,9 @@ describe("AuthService", () => {
         {
           provide: ResetTokenService,
           useValue: {
-            create: vi.fn().mockResolvedValue({ rawToken: "mock-raw-token-abc" }),
+            create: vi
+              .fn()
+              .mockResolvedValue({ rawToken: "mock-raw-token-abc" }),
             validate: vi.fn(),
             markUsed: vi.fn().mockResolvedValue(undefined),
           },

@@ -7,7 +7,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { User, UserRole } from "../entities/user.entity.js";
+import { User } from "../entities/user.entity.js";
 import { UsersService } from "../users/users.service.js";
 import { RegisterDto } from "./dto/register.dto.js";
 import { HashService } from "./hash.service.js";

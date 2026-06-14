@@ -57,7 +57,7 @@ import {
         synchronize: false,
         migrationsRun: config.get<string>("NODE_ENV") === "test",
         migrations: [`${process.cwd()}/src/migrations/*.{ts,js}`],
-        logging: config.get<string>("NODE_ENV") === "test" ? false : true,
+        logging: config.get<string>("NODE_ENV") !== "test",
       }),
       inject: [ConfigService],
     }),
