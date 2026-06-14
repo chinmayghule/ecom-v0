@@ -1,5 +1,6 @@
 import { type INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import * as argon2 from "argon2";
 import cookieParser from "cookie-parser";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -409,15 +410,60 @@ describe("Auth (e2e)", () => {
   });
 
   describe("POST /auth/reset-password", () => {
-    it("resets password with valid token", async () => {
+    const resetUser = {
+      email: "reset-e2e@example.com",
+      password: "OriginalPass123!",
+      name: "Reset E2E",
+    };
+
+    it("resets password with valid token and allows login with new password", async () => {
+      await request(getServer())
+        .post("/auth/register")
+        .send(resetUser)
+        .expect(201);
+
+      const users = await dataSource.query(
+        `SELECT id FROM users WHERE email = $1`,
+        [resetUser.email],
+      );
+      const userId = users[0].id;
+
+      const rawToken = "e2e-test-reset-token-123";
+      const hashedToken = await argon2.hash(rawToken);
+      const expiresAt = new Date(Date.now() + 3_600_000);
+      await dataSource.query(
+        `INSERT INTO reset_tokens ("userId", "token", "expiresAt") VALUES ($1, $2, $3)`,
+        [userId, hashedToken, expiresAt],
+      );
+
+      const newPassword = "NewStrongPass456!";
       const res = await request(getServer())
         .post("/auth/reset-password")
-        .send({ token: "valid-reset-token", password: "NewStrongPass456!" })
+        .send({ token: rawToken, password: newPassword })
         .expect(201);
 
       expect(res.body).toEqual({
         message: "Password has been reset successfully.",
       });
+
+      await request(getServer())
+        .post("/auth/login")
+        .send({ email: resetUser.email, password: newPassword })
+        .expect(201);
+
+      await request(getServer())
+        .post("/auth/login")
+        .send({ email: resetUser.email, password: resetUser.password })
+        .expect(401);
+    });
+
+    it("rejects invalid token", async () => {
+      const res = await request(getServer())
+        .post("/auth/reset-password")
+        .send({ token: "garbage-token", password: "AnotherNewPass1!" })
+        .expect(400);
+
+      expect(res.body.message).toContain("Invalid or expired reset token");
     });
 
     it("rejects short password", async () => {

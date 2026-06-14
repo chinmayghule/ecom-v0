@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -10,6 +11,7 @@ import { User, UserRole } from "../entities/user.entity.js";
 import { UsersService } from "../users/users.service.js";
 import { RegisterDto } from "./dto/register.dto.js";
 import { HashService } from "./hash.service.js";
+import { ResetTokenService } from "./reset-token.service.js";
 import { SessionService } from "./session.service.js";
 
 @Injectable()
@@ -22,6 +24,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly sessionService: SessionService,
+    private readonly resetTokenService: ResetTokenService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<User | null> {
@@ -71,7 +74,10 @@ export class AuthService {
   async forgotPassword(email: string): Promise<{ message: string }> {
     const user = await this.usersService.findByEmail(email);
     if (user) {
-      this.logger.log(`[DEV] Password reset requested for ${email}`);
+      const { rawToken } = await this.resetTokenService.create(user.id);
+      this.logger.log(
+        `[DEV] Password reset link: http://localhost:3000/reset-password?token=${rawToken}`,
+      );
     }
     return {
       message:
@@ -83,12 +89,13 @@ export class AuthService {
     token: string,
     newPassword: string,
   ): Promise<{ message: string }> {
-    if (!token) {
-      throw new Error("Invalid or expired reset token");
+    const resetToken = await this.resetTokenService.validate(token);
+    if (!resetToken) {
+      throw new BadRequestException("Invalid or expired reset token");
     }
     const passwordHash = await this.hashService.hashPassword(newPassword);
-    // For Phase 1, mock: accept any non-empty token
-    this.logger.log(`[DEV] Password reset with token: ${token}`);
+    await this.usersService.update(resetToken.userId, { passwordHash });
+    await this.resetTokenService.markUsed(resetToken.id);
     return { message: "Password has been reset successfully." };
   }
 

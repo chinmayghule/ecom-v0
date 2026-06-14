@@ -1,4 +1,8 @@
-import { ConflictException, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test } from "@nestjs/testing";
@@ -7,6 +11,7 @@ import { User, UserRole } from "../../entities/user.entity.js";
 import { UsersService } from "../../users/users.service.js";
 import { AuthService } from "../auth.service.js";
 import { HashService } from "../hash.service.js";
+import { ResetTokenService } from "../reset-token.service.js";
 import { SessionService } from "../session.service.js";
 
 const mockUser = (overrides: Partial<User> = {}): User =>
@@ -27,6 +32,7 @@ describe("AuthService", () => {
   let authService: AuthService;
   let usersService: UsersService;
   let hashService: HashService;
+  let resetTokenService: ResetTokenService;
   let sessionService: SessionService;
   let jwtService: JwtService;
   let configService: ConfigService;
@@ -43,6 +49,7 @@ describe("AuthService", () => {
             findByEmail: vi.fn(),
             findById: vi.fn(),
             create: vi.fn(),
+            update: vi.fn(),
           },
         },
         {
@@ -83,12 +90,21 @@ describe("AuthService", () => {
             parseDeviceInfo: vi.fn(),
           },
         },
+        {
+          provide: ResetTokenService,
+          useValue: {
+            create: vi.fn().mockResolvedValue({ rawToken: "mock-raw-token-abc" }),
+            validate: vi.fn(),
+            markUsed: vi.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
     authService = module.get(AuthService);
     usersService = module.get(UsersService);
     hashService = module.get(HashService);
+    resetTokenService = module.get(ResetTokenService);
     sessionService = module.get(SessionService);
     jwtService = module.get(JwtService);
     configService = module.get(ConfigService);
@@ -282,42 +298,59 @@ describe("AuthService", () => {
   });
 
   describe("forgotPassword", () => {
-    it("returns generic message regardless of email existence", async () => {
+    it("creates a reset token and returns generic message for existing user", async () => {
       vi.mocked(usersService.findByEmail).mockResolvedValue(mockUser());
+      vi.mocked(resetTokenService.create).mockResolvedValue({
+        rawToken: "test-raw-token",
+      });
 
       const result = await authService.forgotPassword("test@example.com");
 
+      expect(resetTokenService.create).toHaveBeenCalledWith("user-1");
       expect(result.message).toContain("If that email is registered");
     });
 
-    it("returns same message for unknown email", async () => {
+    it("returns same message for unknown email without creating token", async () => {
       vi.mocked(usersService.findByEmail).mockResolvedValue(null);
 
       const result = await authService.forgotPassword("unknown@example.com");
 
+      expect(resetTokenService.create).not.toHaveBeenCalled();
       expect(result.message).toContain("If that email is registered");
     });
   });
 
   describe("resetPassword", () => {
-    it("hashes new password and returns success", async () => {
+    it("validates token, updates password, and marks token used", async () => {
+      const mockResetToken = { id: "reset-1", userId: "user-1" };
+      vi.mocked(resetTokenService.validate).mockResolvedValue(
+        mockResetToken as any,
+      );
       vi.mocked(hashService.hashPassword).mockResolvedValue(
         "hashed_new_password",
       );
+      vi.mocked(usersService.update).mockResolvedValue(mockUser() as any);
 
       const result = await authService.resetPassword(
-        "reset-token-123",
-        "newPassword456",
+        "valid-token",
+        "newPass123!",
       );
 
-      expect(hashService.hashPassword).toHaveBeenCalledWith("newPassword456");
+      expect(resetTokenService.validate).toHaveBeenCalledWith("valid-token");
+      expect(hashService.hashPassword).toHaveBeenCalledWith("newPass123!");
+      expect(usersService.update).toHaveBeenCalledWith("user-1", {
+        passwordHash: "hashed_new_password",
+      });
+      expect(resetTokenService.markUsed).toHaveBeenCalledWith("reset-1");
       expect(result.message).toBe("Password has been reset successfully.");
     });
 
-    it("throws on empty token", async () => {
+    it("throws BadRequestException for invalid or expired token", async () => {
+      vi.mocked(resetTokenService.validate).mockResolvedValue(null);
+
       await expect(
-        authService.resetPassword("", "newPassword456"),
-      ).rejects.toThrow("Invalid or expired reset token");
+        authService.resetPassword("bad-token", "newPass123!"),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });
