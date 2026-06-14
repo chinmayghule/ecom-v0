@@ -78,6 +78,10 @@ Next.js with SSR. Storybook for UI documentation. No code yet.
 
 If an agent sees a decision that is poor practice, a code smell, or a security issue, **flag it and explain the better approach**. The user wants to learn industry standards, not just ship code.
 
+### Commit style
+
+Follow `./COMMIT_STYLE.md` — read that file before writing any commit message. Do not infer style from prior commits.
+
 ### Pre-commit
 
 Lefthook runs `pnpm biome check --staged`. Failing lint blocks commit.
