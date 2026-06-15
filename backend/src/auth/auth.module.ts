@@ -22,6 +22,7 @@ import {
 import { ResetTokenService } from "./reset-token.service.js";
 import { SessionService } from "./session.service.js";
 import { JwtStrategy } from "./strategies/jwt.strategy.js";
+import { TokenHashService } from "./token-hash.service.js";
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy.js";
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>("JWT_SECRET")!,
+        secret: config.getOrThrow<string>("JWT_SECRET"),
         signOptions: {
           expiresIn: Number(
             config.get<string>("JWT_ACCESS_EXPIRATION_MS", "900000"),
@@ -46,6 +47,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy.js";
     AuthService,
     SessionService,
     HashService,
+    TokenHashService,
     ResetTokenService,
     JwtStrategy,
     JwtAuthGuard,
@@ -57,6 +59,6 @@ import { JwtStrategy } from "./strategies/jwt.strategy.js";
     CartPolicy,
     SellerProfilePolicy,
   ],
-  exports: [AuthService, SessionService, HashService],
+  exports: [AuthService, SessionService, HashService, TokenHashService],
 })
 export class AuthModule {}

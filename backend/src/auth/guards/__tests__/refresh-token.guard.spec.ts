@@ -1,4 +1,4 @@
-import { UnauthorizedException } from "@nestjs/common";
+import { type ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test } from "@nestjs/testing";
@@ -6,7 +6,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SessionService } from "../../session.service.js";
 import { RefreshTokenGuard } from "../refresh-token.guard.js";
 
-function mockExecutionContext(cookies: Record<string, string>) {
+function mockExecutionContext(
+  cookies: Record<string, string>,
+): Partial<ExecutionContext> {
   const request: Record<string, unknown> = { cookies };
   return {
     switchToHttp: () => ({
@@ -14,7 +16,7 @@ function mockExecutionContext(cookies: Record<string, string>) {
     }),
     getHandler: () => ({}),
     getClass: () => ({}),
-  } as any;
+  };
 }
 
 describe("RefreshTokenGuard", () => {
@@ -56,7 +58,7 @@ describe("RefreshTokenGuard", () => {
     vi.mocked(jwtService.verify).mockReturnValue({ sub: "user-1" });
     vi.mocked(sessionService.validateRefreshToken).mockResolvedValue({
       id: "session-1",
-    } as any);
+    } as Partial<import("../../../entities/session.entity.js").Session>);
 
     const context = mockExecutionContext({ refreshToken: "valid-token" });
     const result = await guard.canActivate(context);
@@ -77,10 +79,10 @@ describe("RefreshTokenGuard", () => {
     vi.mocked(jwtService.verify).mockReturnValue({ sub: "user-1" });
     vi.mocked(sessionService.validateRefreshToken).mockResolvedValue({
       id: "session-1",
-    } as any);
+    } as Partial<import("../../../entities/session.entity.js").Session>);
 
     const context = mockExecutionContext({ refreshToken: "valid-token" });
-    const req = context.switchToHttp().getRequest();
+    const req = context.switchToHttp().getRequest() as Record<string, unknown>;
     req.user = {
       id: "user-1",
       email: "test@example.com",

@@ -1,13 +1,17 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import type { DeepPartial } from "typeorm";
 import { Repository } from "typeorm";
 import { type DeviceInfo, Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
+import { TokenHashService } from "./token-hash.service.js";
 
 @Injectable()
 export class SessionService {
   constructor(
     @InjectRepository(Session)
     private readonly sessionRepo: Repository<Session>,
+    private readonly tokenHashService: TokenHashService,
   ) {}
 
   async createSession(
@@ -18,9 +22,10 @@ export class SessionService {
     ipAddress?: string,
     deviceInfo?: DeviceInfo,
   ): Promise<Session> {
+    const hashedToken = this.tokenHashService.hash(refreshToken);
     const session = this.sessionRepo.create({
-      user: { id: userId } as any,
-      refreshToken,
+      user: { id: userId } as DeepPartial<User>,
+      refreshToken: hashedToken,
       expiresAt,
       userAgent: userAgent ?? null,
       ipAddress: ipAddress ?? null,
@@ -73,8 +78,9 @@ export class SessionService {
     userId: string,
     refreshToken: string,
   ): Promise<Session | null> {
+    const hashedToken = this.tokenHashService.hash(refreshToken);
     const session = await this.sessionRepo.findOne({
-      where: { user: { id: userId }, refreshToken },
+      where: { user: { id: userId }, refreshToken: hashedToken },
     });
     if (!session) return null;
     if (new Date() > session.expiresAt) {

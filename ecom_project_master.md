@@ -23,7 +23,7 @@ Layers are the functional divisions inside the application. They exist **simulta
 | **Frontend** | User-facing UI. Multiple frameworks deployed in parallel from Phase 3. |
 | **Backend (API)** | Business logic, data access, authentication, authorization. NestJS throughout. |
 | **Database** | Persistent storage. PostgreSQL throughout. |
-| **Infrastructure** | How everything runs locally and in the cloud. Docker locally, AWS then GCP in deployment. |
+| **Infrastructure** | How everything runs locally and in the cloud. Docker locally, free-tier services (Vercel, Render, Neon) then GCP in deployment. |
 | **Observability** | Visibility into what the running system is doing. Logs, uptime, performance. |
 | **Documentation** | Code-level docs (TSDoc), API spec (OpenAPI/Swagger), generated docs site (TypeDoc + Starlight). |
 
@@ -45,7 +45,7 @@ The project transitions between two architectural modes:
 | Environment | How |
 |---|---|
 | **Local** | Docker Compose. Runs the full stack on your machine. Present at every phase. |
-| **Deployed — AWS** | Phases 1–3. EC2 + RDS. Free tier. |
+| **Deployed — Free Tier** | Phases 1–3. Vercel (frontend) + Render (backend) + Neon (PostgreSQL). All free tier. |
 | **Deployed — GCP** | Phases 4–5. Cloud Run. Permanently free at portfolio traffic levels. |
 
 ---
@@ -81,10 +81,11 @@ Everything used across the entire project, organized by layer. This list capture
 | Framework | Next.js | SSR where appropriate |
 | Language | TypeScript | |
 | Styling | Tailwind CSS | |
+| UI components | Shadcn UI | Component library built on Radix + Tailwind |
 | Server state / data fetching | TanStack Query | |
 | Forms | React Hook Form + Zod | |
-| Auth flows | NextAuth | |
-| API client | orval | Deliberate choice — generates a fully typed client from the OpenAPI spec automatically |
+| Auth flows | Custom JWT handling | Direct JWT in httpOnly cookies / localStorage; no NextAuth |
+| API calls | Express.js route handlers | Next.js API routes using Express.js to call backend; orval optional |
 | Component documentation | Storybook | Added after core UI stabilizes |
 | Testing — unit | Vitest | |
 | Testing — integration | React Testing Library | Component-level integration tests |
@@ -142,13 +143,13 @@ Everything used across the entire project, organized by layer. This list capture
 |---|---|---|
 | Pipeline | GitHub Actions | Lint, format check, tests, build — fails fast |
 
-**AWS (Phases 1–3)**
+**Free Tier (Phases 1–3)**
 
-| Resource | Spec | Note |
+| Resource | Platform | Note |
 |---|---|---|
-| Compute | EC2 t3.micro | Runs full Docker Compose stack; free tier 12 months |
-| Database | RDS PostgreSQL t3.micro | Managed; free tier 12 months |
-| Monitoring | CloudWatch | Billing alarm set at $1 threshold immediately |
+| Frontend hosting | Vercel (Hobby) | Auto-deploys from GitHub; free tier |
+| Backend hosting | Render (Web Service) | Auto-deploys from GitHub; free tier |
+| Database | Neon (PostgreSQL) | Serverless Postgres; free tier includes 500MB storage |
 
 **GCP (Phases 4–5)**
 
@@ -165,7 +166,7 @@ Everything used across the entire project, organized by layer. This list capture
 |---|---|---|
 | Structured logging | Pino | JSON logs from backend; human-readable in local dev |
 | Log ingestion + uptime | BetterStack | Free tier sufficient; present from Phase 1 |
-| Cloud monitoring | CloudWatch | AWS billing alarms, Phases 1–3 |
+| Cloud monitoring | N/A (free tier) | No cloud monitoring in Phases 1–3 — BetterStack covers uptime |
 | Distributed tracing (Phase 5) | OpenTelemetry | Instrumentation standard; backend: BetterStack or GCP Cloud Trace |
 
 ### 3.8 Documentation
@@ -198,7 +199,7 @@ Everything used across the entire project, organized by layer. This list capture
 
 ---
 
-### Phase 1 — Complete Monolith, Deployed on AWS
+### Phase 1 — Complete Monolith
 
 **Goal:** Ship a complete, working, deployed full-stack product. Every layer exists and is functional. This is the baseline everything else builds on.
 
@@ -215,12 +216,11 @@ Everything used across the entire project, organized by layer. This list capture
 - Multi-stage Dockerfiles for NestJS and Next.js
 - GitHub Actions: lint (Biome), format check, tests, build — fails fast on errors
 - Lefthook pre-commit and pre-push hooks
-- Deployed on AWS: EC2 `t3.micro` running Docker Compose, RDS PostgreSQL `t3.micro`
-- CloudWatch billing alarm set at $1
+- Deployed on Render (backend) + Vercel (frontend) + Neon (PostgreSQL) — all free tier
 
 **Deferred to later phases:** massive seed data, load testing, Nuxt/Angular, microservices, GCP.
 
-**Resume milestone:** *"Full-stack e-commerce platform — NestJS, Next.js, PostgreSQL — deployed on AWS with CI/CD, structured logging, and auto-generated API and code documentation."*
+**Resume milestone:** *"Full-stack e-commerce platform — NestJS, Next.js, PostgreSQL — deployed on free tier (Render + Vercel + Neon) with CI/CD, structured logging, and auto-generated API and code documentation."*
 
 ---
 
@@ -234,7 +234,7 @@ Everything used across the entire project, organized by layer. This list capture
 - Systematic diagnosis of what breaks: N+1 queries, missing indexes, missing composite indexes on foreign keys, connection pool exhaustion, slow queries under join pressure.
 - Fixes applied: TypeORM index definitions, query restructuring, connection pool tuning, response-level caching where appropriate.
 - BetterStack observability properly wired and used to observe the system during load tests.
-- Potentially move Postgres from Docker-in-EC2 to RDS if not already (better isolation, easier to monitor).
+- Database is already on managed Neon (serverless Postgres) — no migration needed.
 
 **What this phase produces that is unique:** the ability to talk about *specific real problems* you found and the specific decisions you made to fix them. Most portfolio projects cannot do this.
 
@@ -250,7 +250,7 @@ Everything used across the entire project, organized by layer. This list capture
 - Nuxt.js frontend: Vue-based, Pinia state management, Tailwind CSS, same feature set as Next.js frontend.
 - Angular frontend: Angular Material components, auth flows, same feature set.
 - All three frontends (Next.js, Nuxt.js, Angular) deployed and accessible in parallel.
-- Next.js on Vercel or AWS Amplify. Nuxt.js and Angular on Vercel or separate Amplify apps. All pointing at the same backend API.
+- All frontends on Vercel. Each framework gets its own Vercel project. All pointing at the same backend API.
 - Storybook added to the Next.js frontend for component documentation after the UI stabilizes.
 
 **Resume milestone:** *"Same NestJS API consumed simultaneously by three frontend frameworks — Next.js, Nuxt.js, Angular — each independently deployed."*

@@ -11,7 +11,8 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import type { Response } from "express";
+import { Throttle } from "@nestjs/throttler";
+import type { Request, Response } from "express";
 import { User } from "../entities/user.entity.js";
 import { UsersService } from "../users/users.service.js";
 import { AuthService } from "./auth.service.js";
@@ -44,7 +45,6 @@ export class AuthController {
   @Post("register")
   async register(
     @Body() dto: RegisterDto,
-    @Req() req: any,
     @Res({ passthrough: true }) res: Response,
   ) {
     const { accessToken, refreshToken } = await this.authService.register(dto);
@@ -55,7 +55,7 @@ export class AuthController {
   @Post("login")
   async login(
     @Body() dto: LoginDto,
-    @Req() req: any,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const user = await this.authService.validateUser(dto.email, dto.password);
@@ -71,15 +71,30 @@ export class AuthController {
 
   @UseGuards(RefreshTokenGuard)
   @Post("refresh")
-  async refresh(@CurrentUser() user: { id: string }) {
-    return this.authService.refreshAccessToken(user.id);
+  async refresh(
+    @CurrentUser() user: { id: string; sessionId: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.refreshAccessToken(
+      user.id,
+      user.sessionId,
+      req.headers["user-agent"],
+      req.ip,
+    );
+    res.cookie("refreshToken", tokens.refreshToken, REFRESH_COOKIE_OPTIONS);
+    return { accessToken: tokens.accessToken };
   }
 
   @UseGuards(JwtAuthGuard, RefreshTokenGuard)
   @Post("logout")
-  async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async logout(
+    @CurrentUser() user: { id: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const refreshToken = req.cookies?.refreshToken;
-    await this.authService.logout(req.user.id, refreshToken);
+    await this.authService.logout(user.id, refreshToken);
     res.clearCookie("refreshToken", REFRESH_COOKIE_OPTIONS);
     return { message: "Logged out successfully" };
   }
@@ -120,24 +135,27 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RefreshTokenGuard)
   @Post("sessions/revoke-all")
   async revokeAllSessions(
-    @Req() req: any,
+    @CurrentUser() user: { id: string },
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const refreshToken = req.cookies?.refreshToken;
-    const currentSession = refreshToken
-      ? (await this.sessionService.findByUserId(req.user.id)).find(
-          (s) => s.refreshToken === refreshToken,
-        )
-      : null;
+    let currentSessionId: string | undefined;
 
-    await this.sessionService.revokeAllSessions(
-      req.user.id,
-      currentSession?.id,
-    );
+    if (refreshToken) {
+      const validated = await this.sessionService.validateRefreshToken(
+        user.id,
+        refreshToken,
+      );
+      currentSessionId = validated?.id;
+    }
+
+    await this.sessionService.revokeAllSessions(user.id, currentSessionId);
     res.clearCookie("refreshToken", REFRESH_COOKIE_OPTIONS);
     return { message: "All other sessions revoked" };
   }
 
+  @Throttle({ default: { limit: 1, ttl: 60000 } })
   @Post("forgot-password")
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);

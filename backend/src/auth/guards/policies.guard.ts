@@ -38,6 +38,7 @@ export class PoliciesGuard {
       const policyInstance = this.moduleRef.get(handler.policyClass, {
         strict: false,
       });
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic policy dispatch
       const result = await (policyInstance as any)[handler.method](
         user,
         resource,

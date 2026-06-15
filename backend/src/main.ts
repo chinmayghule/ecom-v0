@@ -1,18 +1,22 @@
-import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common/pipes/validation.pipe.js";
 import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
+import { Logger } from "nestjs-pino";
+import "reflect-metadata";
 import { AppModule } from "./app.module.js";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   // security headers
   app.use(helmet());
 
   // cookie-parser for reading httpOnly refresh token cookies
   app.use(cookieParser());
+
+  // pino logger — replaces NestJS default console logger
+  app.useLogger(app.get(Logger));
 
   // cors - restricted to front-end origin later.
   const corsOrigin =
