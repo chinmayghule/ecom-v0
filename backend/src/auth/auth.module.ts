@@ -13,7 +13,6 @@ import { PoliciesGuard } from "./guards/policies.guard.js";
 import { RefreshTokenGuard } from "./guards/refresh-token.guard.js";
 import { RolesGuard } from "./guards/roles.guard.js";
 import { HashService } from "./hash.service.js";
-import { TokenHashService } from "./token-hash.service.js";
 import {
   CartPolicy,
   OrderPolicy,
@@ -23,6 +22,7 @@ import {
 import { ResetTokenService } from "./reset-token.service.js";
 import { SessionService } from "./session.service.js";
 import { JwtStrategy } from "./strategies/jwt.strategy.js";
+import { TokenHashService } from "./token-hash.service.js";
 
 @Module({
   imports: [

@@ -199,7 +199,10 @@ describe("SessionService", () => {
       );
 
       expect(repo.findOne).toHaveBeenCalledWith({
-        where: { user: { id: "user-1" }, refreshToken: "hashed-refresh-token-1" },
+        where: {
+          user: { id: "user-1" },
+          refreshToken: "hashed-refresh-token-1",
+        },
       });
       expect(result).toEqual(session);
       expect(repo.save).toHaveBeenCalled();

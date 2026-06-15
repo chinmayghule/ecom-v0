@@ -7,10 +7,10 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test } from "@nestjs/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { User, UserRole } from "../../entities/user.entity.js";
-import { UsersService } from "../../users/users.service.js";
 import { EMAIL_SERVICE } from "../../email/email.module.js";
 import type { EmailService } from "../../email/interfaces/email-service.interface.js";
+import { User, UserRole } from "../../entities/user.entity.js";
+import { UsersService } from "../../users/users.service.js";
 import { AuthService } from "../auth.service.js";
 import { HashService } from "../hash.service.js";
 import { ResetTokenService } from "../reset-token.service.js";
@@ -38,8 +38,6 @@ describe("AuthService", () => {
   let resetTokenService: ResetTokenService;
   let sessionService: SessionService;
   let jwtService: JwtService;
-  let configService: ConfigService;
-  let tokenHashService: TokenHashService;
   let emailService: EmailService;
 
   beforeEach(async () => {
@@ -130,8 +128,6 @@ describe("AuthService", () => {
     resetTokenService = module.get(ResetTokenService);
     sessionService = module.get(SessionService);
     jwtService = module.get(JwtService);
-    configService = module.get(ConfigService);
-    tokenHashService = module.get(TokenHashService);
     emailService = module.get(EMAIL_SERVICE);
   });
 

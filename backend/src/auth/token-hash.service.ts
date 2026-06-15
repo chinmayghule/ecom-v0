@@ -1,5 +1,5 @@
-import { Injectable } from "@nestjs/common";
 import { createHash, timingSafeEqual } from "node:crypto";
+import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class TokenHashService {

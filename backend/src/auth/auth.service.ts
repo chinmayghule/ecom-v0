@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   BadRequestException,
   ConflictException,
@@ -7,12 +9,10 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { User } from "../entities/user.entity.js";
-import { UsersService } from "../users/users.service.js";
 import { EMAIL_SERVICE } from "../email/email.module.js";
 import type { EmailService } from "../email/interfaces/email-service.interface.js";
+import { User } from "../entities/user.entity.js";
+import { UsersService } from "../users/users.service.js";
 import { RegisterDto } from "./dto/register.dto.js";
 import { HashService } from "./hash.service.js";
 import { ResetTokenService } from "./reset-token.service.js";
@@ -20,7 +20,13 @@ import { SessionService } from "./session.service.js";
 import { TokenHashService } from "./token-hash.service.js";
 
 function loadTemplate(name: string, variables: Record<string, string>): string {
-  const templatePath = join(process.cwd(), "src", "email", "templates", `${name}.html`);
+  const templatePath = join(
+    process.cwd(),
+    "src",
+    "email",
+    "templates",
+    `${name}.html`,
+  );
   let template = readFileSync(templatePath, "utf-8");
   for (const [key, value] of Object.entries(variables)) {
     template = template.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
@@ -104,7 +110,10 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     if (user) {
       const { rawToken } = await this.resetTokenService.create(user.id);
-      const frontendUrl = this.configService.get<string>("FRONTEND_URL", "http://localhost:3000");
+      const frontendUrl = this.configService.get<string>(
+        "FRONTEND_URL",
+        "http://localhost:3000",
+      );
       const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
       const html = loadTemplate("password-reset", {
         RESET_URL: resetUrl,
