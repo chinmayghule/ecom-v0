@@ -13,6 +13,7 @@ import { PoliciesGuard } from "./guards/policies.guard.js";
 import { RefreshTokenGuard } from "./guards/refresh-token.guard.js";
 import { RolesGuard } from "./guards/roles.guard.js";
 import { HashService } from "./hash.service.js";
+import { TokenHashService } from "./token-hash.service.js";
 import {
   CartPolicy,
   OrderPolicy,
@@ -46,6 +47,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy.js";
     AuthService,
     SessionService,
     HashService,
+    TokenHashService,
     ResetTokenService,
     JwtStrategy,
     JwtAuthGuard,
@@ -57,6 +59,6 @@ import { JwtStrategy } from "./strategies/jwt.strategy.js";
     CartPolicy,
     SellerProfilePolicy,
   ],
-  exports: [AuthService, SessionService, HashService],
+  exports: [AuthService, SessionService, HashService, TokenHashService],
 })
 export class AuthModule {}
