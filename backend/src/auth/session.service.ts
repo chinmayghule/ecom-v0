@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import type { DeepPartial } from "typeorm";
 import { Repository } from "typeorm";
 import { type DeviceInfo, Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
 import { TokenHashService } from "./token-hash.service.js";
 
 @Injectable()
@@ -22,7 +24,7 @@ export class SessionService {
   ): Promise<Session> {
     const hashedToken = this.tokenHashService.hash(refreshToken);
     const session = this.sessionRepo.create({
-      user: { id: userId } as any,
+      user: { id: userId } as DeepPartial<User>,
       refreshToken: hashedToken,
       expiresAt,
       userAgent: userAgent ?? null,

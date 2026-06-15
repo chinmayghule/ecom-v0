@@ -18,7 +18,7 @@ export class ProductPolicy extends BasePolicy {
 
   canView(user: User | null, product: ProductLike): boolean {
     if (product.isActive) return true;
-    if (this.isAdmin(user!)) return true;
+    if (user && this.isAdmin(user)) return true;
     const ownerId = product.sellerId ?? product.seller?.id;
     if (user && user.id === ownerId) return true;
     return false;
