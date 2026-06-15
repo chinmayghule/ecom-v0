@@ -183,7 +183,9 @@ describe("AuthService", () => {
         "hashed_new_password",
       );
       vi.mocked(usersService.create).mockResolvedValue(user);
-      vi.mocked(sessionService.createSession).mockResolvedValue({} as any);
+      vi.mocked(sessionService.createSession).mockResolvedValue(
+        {} as import("../../../entities/session.entity.js").Session,
+      );
 
       const result = await authService.register({
         email: "test@example.com",
@@ -224,7 +226,9 @@ describe("AuthService", () => {
   describe("login", () => {
     it("generates token pair and creates session", async () => {
       const user = mockUser();
-      vi.mocked(sessionService.createSession).mockResolvedValue({} as any);
+      vi.mocked(sessionService.createSession).mockResolvedValue(
+        {} as import("../../../entities/session.entity.js").Session,
+      );
 
       const result = await authService.login(user, "Mozilla/5.0", "127.0.0.1");
 
@@ -245,7 +249,9 @@ describe("AuthService", () => {
 
     it("works without user-agent and ip", async () => {
       const user = mockUser();
-      vi.mocked(sessionService.createSession).mockResolvedValue({} as any);
+      vi.mocked(sessionService.createSession).mockResolvedValue(
+        {} as import("../../../entities/session.entity.js").Session,
+      );
 
       const result = await authService.login(user);
 
@@ -269,7 +275,9 @@ describe("AuthService", () => {
       const user = mockUser();
       vi.mocked(usersService.findById).mockResolvedValue(user);
       vi.mocked(jwtService.sign).mockReturnValue("new-access-token");
-      vi.mocked(sessionService.createSession).mockResolvedValue({} as any);
+      vi.mocked(sessionService.createSession).mockResolvedValue(
+        {} as import("../../../entities/session.entity.js").Session,
+      );
 
       const result = await authService.refreshAccessToken(
         "user-1",
@@ -302,8 +310,8 @@ describe("AuthService", () => {
     it("revokes session when refresh token matches", async () => {
       const session = { id: "session-1", refreshToken: "hashed-rt-1" };
       vi.mocked(sessionService.findByUserId).mockResolvedValue([
-        session,
-      ] as any);
+        session as import("../../../entities/session.entity.js").Session,
+      ]);
 
       await authService.logout("user-1", "rt-1");
 
@@ -315,8 +323,11 @@ describe("AuthService", () => {
 
     it("does nothing when session token doesnt match", async () => {
       vi.mocked(sessionService.findByUserId).mockResolvedValue([
-        { id: "session-1", refreshToken: "hashed-rt-1" },
-      ] as any);
+        {
+          id: "session-1",
+          refreshToken: "hashed-rt-1",
+        } as import("../../../entities/session.entity.js").Session,
+      ]);
 
       await authService.logout("user-1", "non-matching-token");
 
@@ -359,12 +370,12 @@ describe("AuthService", () => {
     it("validates token, updates password, and marks token used", async () => {
       const mockResetToken = { id: "reset-1", userId: "user-1" };
       vi.mocked(resetTokenService.validate).mockResolvedValue(
-        mockResetToken as any,
+        mockResetToken as import("../entities/reset-token.entity.js").ResetToken,
       );
       vi.mocked(hashService.hashPassword).mockResolvedValue(
         "hashed_new_password",
       );
-      vi.mocked(usersService.update).mockResolvedValue(mockUser() as any);
+      vi.mocked(usersService.update).mockResolvedValue(mockUser());
 
       const result = await authService.resetPassword(
         "valid-token",

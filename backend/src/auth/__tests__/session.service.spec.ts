@@ -10,7 +10,9 @@ const mockSession = (overrides: Partial<Session> = {}): Session =>
   ({
     id: "session-1",
     refreshToken: "hashed-refresh-token-1",
-    user: { id: "user-1" },
+    user: { id: "user-1" } as Partial<
+      import("../../../entities/user.entity.js").User
+    >,
     expiresAt: new Date(Date.now() + 86400000),
     userAgent: "Mozilla/5.0",
     ipAddress: "127.0.0.1",

@@ -32,7 +32,7 @@ import { TokenHashService } from "./token-hash.service.js";
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>("JWT_SECRET")!,
+        secret: config.getOrThrow<string>("JWT_SECRET"),
         signOptions: {
           expiresIn: Number(
             config.get<string>("JWT_ACCESS_EXPIRATION_MS", "900000"),
