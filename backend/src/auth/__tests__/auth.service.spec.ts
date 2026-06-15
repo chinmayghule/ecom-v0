@@ -9,10 +9,13 @@ import { Test } from "@nestjs/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { User, UserRole } from "../../entities/user.entity.js";
 import { UsersService } from "../../users/users.service.js";
+import { EMAIL_SERVICE } from "../../email/email.module.js";
+import type { EmailService } from "../../email/interfaces/email-service.interface.js";
 import { AuthService } from "../auth.service.js";
 import { HashService } from "../hash.service.js";
 import { ResetTokenService } from "../reset-token.service.js";
 import { SessionService } from "../session.service.js";
+import { TokenHashService } from "../token-hash.service.js";
 
 const mockUser = (overrides: Partial<User> = {}): User =>
   ({
@@ -36,6 +39,8 @@ describe("AuthService", () => {
   let sessionService: SessionService;
   let jwtService: JwtService;
   let configService: ConfigService;
+  let tokenHashService: TokenHashService;
+  let emailService: EmailService;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -76,6 +81,7 @@ describe("AuthService", () => {
                   JWT_SECRET: "test-secret",
                   JWT_REFRESH_SECRET: "test-refresh-secret",
                   JWT_REFRESH_EXPIRATION_MS: "604800000",
+                  FRONTEND_URL: "http://localhost:3000",
                 };
                 return config[key] ?? defaultValue ?? null;
               }),
@@ -100,6 +106,21 @@ describe("AuthService", () => {
             markUsed: vi.fn().mockResolvedValue(undefined),
           },
         },
+        {
+          provide: TokenHashService,
+          useValue: {
+            hash: vi.fn((token: string) => `hashed-${token}`),
+            compare: vi.fn((token: string, hash: string) => {
+              return `hashed-${token}` === hash;
+            }),
+          },
+        },
+        {
+          provide: EMAIL_SERVICE,
+          useValue: {
+            send: vi.fn().mockResolvedValue(undefined),
+          },
+        },
       ],
     }).compile();
 
@@ -110,6 +131,8 @@ describe("AuthService", () => {
     sessionService = module.get(SessionService);
     jwtService = module.get(JwtService);
     configService = module.get(ConfigService);
+    tokenHashService = module.get(TokenHashService);
+    emailService = module.get(EMAIL_SERVICE);
   });
 
   describe("validateUser", () => {
@@ -246,29 +269,42 @@ describe("AuthService", () => {
   });
 
   describe("refreshAccessToken", () => {
-    it("returns new access token for valid user id", async () => {
+    it("revokes old session and returns new tokens", async () => {
       const user = mockUser();
       vi.mocked(usersService.findById).mockResolvedValue(user);
       vi.mocked(jwtService.sign).mockReturnValue("new-access-token");
+      vi.mocked(sessionService.createSession).mockResolvedValue({} as any);
 
-      const result = await authService.refreshAccessToken("user-1");
+      const result = await authService.refreshAccessToken(
+        "user-1",
+        "session-1",
+        "Mozilla/5.0",
+        "127.0.0.1",
+      );
 
-      expect(result).toEqual({ accessToken: "new-access-token" });
-      expect(usersService.findById).toHaveBeenCalledWith("user-1");
+      expect(result).toEqual({
+        accessToken: "new-access-token",
+        refreshToken: "new-access-token",
+      });
+      expect(sessionService.revokeSession).toHaveBeenCalledWith(
+        "session-1",
+        "user-1",
+      );
+      expect(sessionService.createSession).toHaveBeenCalled();
     });
 
     it("throws UnauthorizedException when user not found", async () => {
       vi.mocked(usersService.findById).mockResolvedValue(null);
 
       await expect(
-        authService.refreshAccessToken("nonexistent"),
+        authService.refreshAccessToken("nonexistent", "session-1"),
       ).rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe("logout", () => {
     it("revokes session when refresh token matches", async () => {
-      const session = { id: "session-1", refreshToken: "rt-1" };
+      const session = { id: "session-1", refreshToken: "hashed-rt-1" };
       vi.mocked(sessionService.findByUserId).mockResolvedValue([
         session,
       ] as any);
@@ -283,7 +319,7 @@ describe("AuthService", () => {
 
     it("does nothing when session token doesnt match", async () => {
       vi.mocked(sessionService.findByUserId).mockResolvedValue([
-        { id: "session-1", refreshToken: "rt-1" },
+        { id: "session-1", refreshToken: "hashed-rt-1" },
       ] as any);
 
       await authService.logout("user-1", "non-matching-token");
@@ -300,7 +336,7 @@ describe("AuthService", () => {
   });
 
   describe("forgotPassword", () => {
-    it("creates a reset token and returns generic message for existing user", async () => {
+    it("creates a reset token and sends email for existing user", async () => {
       vi.mocked(usersService.findByEmail).mockResolvedValue(mockUser());
       vi.mocked(resetTokenService.create).mockResolvedValue({
         rawToken: "test-raw-token",
@@ -309,6 +345,7 @@ describe("AuthService", () => {
       const result = await authService.forgotPassword("test@example.com");
 
       expect(resetTokenService.create).toHaveBeenCalledWith("user-1");
+      expect(emailService.send).toHaveBeenCalled();
       expect(result.message).toContain("If that email is registered");
     });
 

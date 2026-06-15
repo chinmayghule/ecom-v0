@@ -4,11 +4,12 @@ import type { Repository } from "typeorm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Session } from "../../entities/session.entity.js";
 import { SessionService } from "../session.service.js";
+import { TokenHashService } from "../token-hash.service.js";
 
 const mockSession = (overrides: Partial<Session> = {}): Session =>
   ({
     id: "session-1",
-    refreshToken: "refresh-token-1",
+    refreshToken: "hashed-refresh-token-1",
     user: { id: "user-1" },
     expiresAt: new Date(Date.now() + 86400000),
     userAgent: "Mozilla/5.0",
@@ -29,6 +30,15 @@ describe("SessionService", () => {
       providers: [
         SessionService,
         {
+          provide: TokenHashService,
+          useValue: {
+            hash: vi.fn((token: string) => `hashed-${token}`),
+            compare: vi.fn((token: string, hash: string) => {
+              return `hashed-${token}` === hash;
+            }),
+          },
+        },
+        {
           provide: getRepositoryToken(Session),
           useValue: {
             create: vi.fn(),
@@ -48,7 +58,7 @@ describe("SessionService", () => {
   });
 
   describe("createSession", () => {
-    it("creates and saves a session", async () => {
+    it("creates and saves a session with hashed token", async () => {
       const session = mockSession();
       vi.mocked(repo.create).mockReturnValue(session);
       vi.mocked(repo.save).mockResolvedValue(session);
@@ -64,7 +74,7 @@ describe("SessionService", () => {
 
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          refreshToken: "refresh-token-1",
+          refreshToken: "hashed-refresh-token-1",
           userAgent: "Mozilla/5.0",
           ipAddress: "127.0.0.1",
         }),
@@ -78,6 +88,7 @@ describe("SessionService", () => {
         userAgent: null,
         ipAddress: null,
         deviceInfo: null,
+        refreshToken: "hashed-token",
       });
       vi.mocked(repo.create).mockReturnValue(session);
       vi.mocked(repo.save).mockResolvedValue(session);
@@ -86,6 +97,7 @@ describe("SessionService", () => {
 
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
+          refreshToken: "hashed-token",
           userAgent: null,
           ipAddress: null,
           deviceInfo: null,
@@ -186,6 +198,9 @@ describe("SessionService", () => {
         "refresh-token-1",
       );
 
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { user: { id: "user-1" }, refreshToken: "hashed-refresh-token-1" },
+      });
       expect(result).toEqual(session);
       expect(repo.save).toHaveBeenCalled();
     });
