@@ -10,15 +10,13 @@ import type {
 @Injectable()
 export class ResendEmailService implements EmailService, OnModuleInit {
   private readonly logger = new Logger(ResendEmailService.name);
-  private client: Resend;
+  private client!: Resend;
 
-  constructor(private readonly configService: ConfigService) {
-    const apiKey = this.configService.get<string>("RESEND_API_KEY") ?? "";
-    this.client = new Resend(apiKey);
-  }
+  constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
-    const apiKey = this.configService.get<string>("RESEND_API_KEY");
+    const apiKey = this.configService.get<string>("RESEND_API_KEY") ?? "";
+    this.client = new Resend(apiKey);
     if (!apiKey) {
       this.logger.error(
         "RESEND_API_KEY is not set — email sending will fail in production",

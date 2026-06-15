@@ -1,6 +1,7 @@
-import { plainToInstance } from "class-transformer";
+import { plainToInstance, Type } from "class-transformer";
 import {
-  IsNumberString,
+  IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   validateSync,
@@ -8,24 +9,31 @@ import {
 
 class EnvironmentVariables {
   @IsString()
+  @IsNotEmpty()
   DATABASE_HOST!: string;
 
-  @IsNumberString()
-  DATABASE_PORT!: string;
+  @IsInt()
+  @Type(() => Number)
+  DATABASE_PORT!: number;
 
   @IsString()
+  @IsNotEmpty()
   DATABASE_USER!: string;
 
   @IsString()
+  @IsNotEmpty()
   DATABASE_PASSWORD!: string;
 
   @IsString()
+  @IsNotEmpty()
   DATABASE_NAME!: string;
 
   @IsString()
+  @IsNotEmpty()
   JWT_SECRET!: string;
 
   @IsString()
+  @IsNotEmpty()
   JWT_REFRESH_SECRET!: string;
 
   @IsOptional()

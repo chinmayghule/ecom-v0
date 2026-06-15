@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 
 @Injectable()
 export class TokenHashService {
+  /** Uses SHA-256 — suitable for API tokens and refresh tokens only, NOT for passwords. */
   hash(token: string): string {
     return createHash("sha256").update(token).digest("hex");
   }

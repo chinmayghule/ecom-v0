@@ -4,6 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DevEmailService } from "../dev-email.service.js";
 import { ResendEmailService } from "../resend-email.service.js";
 
+vi.mock("resend", () => ({
+  Resend: class {
+    emails = {
+      send: vi.fn().mockResolvedValue(undefined),
+    };
+  },
+}));
+
 describe("DevEmailService", () => {
   let service: DevEmailService;
 
@@ -44,10 +52,21 @@ describe("ResendEmailService", () => {
         },
       ],
     }).compile();
+    await module.init();
     service = module.get<ResendEmailService>(ResendEmailService);
   });
 
   it("is defined", () => {
     expect(service).toBeDefined();
+  });
+
+  it("sends email via Resend API", async () => {
+    await expect(
+      service.send({
+        to: "test@example.com",
+        subject: "Hello",
+        html: "<p>test</p>",
+      }),
+    ).resolves.toBeUndefined();
   });
 });
