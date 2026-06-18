@@ -35,6 +35,10 @@ export class SessionService {
     return this.sessionRepo.save(session);
   }
 
+  async findByRefreshTokenHash(hash: string): Promise<Session | null> {
+    return this.sessionRepo.findOne({ where: { refreshToken: hash } });
+  }
+
   async findByUserId(userId: string): Promise<Session[]> {
     return this.sessionRepo.find({
       where: { user: { id: userId } },
@@ -48,6 +52,19 @@ export class SessionService {
 
   async revokeSession(id: string, userId: string): Promise<void> {
     await this.sessionRepo.delete({ id, user: { id: userId } });
+  }
+
+  /**
+   * Atomically consumes a session by deleting it.
+   * Returns true if a session was deleted, false if already consumed.
+   * Used for refresh token rotation to prevent race conditions.
+   */
+  async consumeSession(sessionId: string, userId: string): Promise<boolean> {
+    const result = await this.sessionRepo.delete({
+      id: sessionId,
+      user: { id: userId },
+    });
+    return (result.affected ?? 0) > 0;
   }
 
   async revokeAllSessions(

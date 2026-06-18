@@ -9,10 +9,12 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { zxcvbn } from "zxcvbn-ts";
 import { EMAIL_SERVICE } from "../email/email.module.js";
 import type { EmailService } from "../email/interfaces/email-service.interface.js";
 import { User } from "../entities/user.entity.js";
 import { UsersService } from "../users/users.service.js";
+import { BruteForceService } from "./brute-force.service.js";
 import { RegisterDto } from "./dto/register.dto.js";
 import { HashService } from "./hash.service.js";
 import { ResetTokenService } from "./reset-token.service.js";
@@ -44,6 +46,7 @@ export class AuthService {
     private readonly sessionService: SessionService,
     private readonly resetTokenService: ResetTokenService,
     private readonly tokenHashService: TokenHashService,
+    private readonly bruteForceService: BruteForceService,
     @Inject(EMAIL_SERVICE) private readonly emailService: EmailService,
   ) {}
 
@@ -61,6 +64,13 @@ export class AuthService {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) throw new ConflictException("Email already in use");
 
+    // Service-level password strength check with user-specific inputs
+    const zxcvbnResult = zxcvbn(dto.password, [dto.email, dto.name ?? ""]);
+    if (zxcvbnResult.score < 3) {
+      const feedback = zxcvbnResult.feedback?.suggestions?.join(" ") ?? "";
+      throw new BadRequestException(`Password is too weak. ${feedback}`.trim());
+    }
+
     const passwordHash = await this.hashService.hashPassword(dto.password);
     const user = await this.usersService.create({
       email: dto.email,
@@ -72,6 +82,12 @@ export class AuthService {
   }
 
   async login(user: User, userAgent?: string, ip?: string) {
+    const locked = await this.bruteForceService.isLocked(user.id);
+    if (locked) {
+      throw new UnauthorizedException(
+        "Account temporarily locked due to too many failed attempts",
+      );
+    }
     return this.generateTokenPair(user, userAgent, ip);
   }
 
@@ -84,7 +100,14 @@ export class AuthService {
     const user = await this.usersService.findById(userId);
     if (!user) throw new UnauthorizedException("User not found");
 
-    await this.sessionService.revokeSession(sessionId, userId);
+    // Atomically consume old session — if already consumed, abort
+    const consumed = await this.sessionService.consumeSession(
+      sessionId,
+      userId,
+    );
+    if (!consumed) {
+      throw new UnauthorizedException("Session already revoked");
+    }
 
     const tokens = await this.generateTokenPair(user, userAgent, ip);
 
@@ -96,10 +119,9 @@ export class AuthService {
 
   async logout(userId: string, sessionToken?: string): Promise<void> {
     if (sessionToken) {
-      const sessions = await this.sessionService.findByUserId(userId);
-      const session = sessions.find((s) =>
-        this.tokenHashService.compare(sessionToken, s.refreshToken),
-      );
+      const tokenHash = this.tokenHashService.hash(sessionToken);
+      const session =
+        await this.sessionService.findByRefreshTokenHash(tokenHash);
       if (session) {
         await this.sessionService.revokeSession(session.id, userId);
       }
@@ -186,11 +208,7 @@ export class AuthService {
   }
 
   private generateAccessToken(user: User): string {
-    return this.jwtService.sign({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    return this.jwtService.sign({ sub: user.id });
   }
 
   private generateRefreshToken(user: User): string {
@@ -198,7 +216,10 @@ export class AuthService {
       { sub: user.id },
       {
         secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
-        expiresIn: "7d",
+        expiresIn: this.configService.get<string>(
+          "JWT_REFRESH_EXPIRATION_MS",
+          "7d",
+        ),
       },
     );
   }

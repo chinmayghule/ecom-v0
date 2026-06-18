@@ -5,7 +5,12 @@ import * as argon2 from "argon2";
 export class HashService {
   async hashPassword(plain: string): Promise<string> {
     if (!plain) throw new BadRequestException("Password cannot be empty");
-    return argon2.hash(plain);
+    return argon2.hash(plain, {
+      type: argon2.argon2id,
+      memoryCost: 37888, // ~37 MiB (up from 2 MiB default) — OWASP non-interactive recommendation
+      timeCost: 2,
+      parallelism: 1,
+    });
   }
 
   async verifyPassword(hash: string, plain: string): Promise<boolean> {

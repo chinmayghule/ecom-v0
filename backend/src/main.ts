@@ -5,6 +5,7 @@ import helmet from "helmet";
 import { Logger } from "nestjs-pino";
 import "reflect-metadata";
 import { AppModule } from "./app.module.js";
+import { doubleCsrfProtection } from "./auth/csrf.service.js";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -14,6 +15,9 @@ async function bootstrap() {
 
   // cookie-parser for reading httpOnly refresh token cookies
   app.use(cookieParser());
+
+  // CSRF double-submit cookie protection for state-changing requests
+  app.use(doubleCsrfProtection);
 
   // pino logger — replaces NestJS default console logger
   app.useLogger(app.get(Logger));

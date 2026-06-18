@@ -109,6 +109,30 @@ describe("SessionService", () => {
     });
   });
 
+  describe("findByRefreshTokenHash", () => {
+    it("returns session when hash matches", async () => {
+      const session = mockSession();
+      vi.mocked(repo.findOne).mockResolvedValue(session);
+
+      const result = await service.findByRefreshTokenHash(
+        "hashed-refresh-token-1",
+      );
+
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { refreshToken: "hashed-refresh-token-1" },
+      });
+      expect(result).toEqual(session);
+    });
+
+    it("returns null when no session found", async () => {
+      vi.mocked(repo.findOne).mockResolvedValue(null);
+
+      const result = await service.findByRefreshTokenHash("nonexistent-hash");
+
+      expect(result).toBeNull();
+    });
+  });
+
   describe("findByUserId", () => {
     it("returns sessions ordered by createdAt DESC", async () => {
       const sessions = [mockSession({ id: "s2" }), mockSession({ id: "s1" })];
@@ -160,6 +184,28 @@ describe("SessionService", () => {
         id: "session-1",
         user: { id: "user-1" },
       });
+    });
+  });
+
+  describe("consumeSession", () => {
+    it("deletes session and returns true when found", async () => {
+      vi.mocked(repo.delete).mockResolvedValue({ affected: 1, raw: {} });
+
+      const result = await service.consumeSession("session-1", "user-1");
+
+      expect(repo.delete).toHaveBeenCalledWith({
+        id: "session-1",
+        user: { id: "user-1" },
+      });
+      expect(result).toBe(true);
+    });
+
+    it("returns false when session already consumed", async () => {
+      vi.mocked(repo.delete).mockResolvedValue({ affected: 0, raw: {} });
+
+      const result = await service.consumeSession("session-1", "user-1");
+
+      expect(result).toBe(false);
     });
   });
 

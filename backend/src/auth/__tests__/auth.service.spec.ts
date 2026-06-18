@@ -12,6 +12,7 @@ import type { EmailService } from "../../email/interfaces/email-service.interfac
 import { User, UserRole } from "../../entities/user.entity.js";
 import { UsersService } from "../../users/users.service.js";
 import { AuthService } from "../auth.service.js";
+import { BruteForceService } from "../brute-force.service.js";
 import { HashService } from "../hash.service.js";
 import { ResetTokenService } from "../reset-token.service.js";
 import { SessionService } from "../session.service.js";
@@ -90,7 +91,9 @@ describe("AuthService", () => {
           useValue: {
             createSession: vi.fn().mockResolvedValue({}),
             findByUserId: vi.fn(),
+            findByRefreshTokenHash: vi.fn(),
             revokeSession: vi.fn(),
+            consumeSession: vi.fn().mockResolvedValue(true),
             parseDeviceInfo: vi.fn(),
           },
         },
@@ -111,6 +114,14 @@ describe("AuthService", () => {
             compare: vi.fn((token: string, hash: string) => {
               return `hashed-${token}` === hash;
             }),
+          },
+        },
+        {
+          provide: BruteForceService,
+          useValue: {
+            isLocked: vi.fn().mockResolvedValue(false),
+            recordFailedAttempt: vi.fn().mockResolvedValue(undefined),
+            resetAttempts: vi.fn().mockResolvedValue(undefined),
           },
         },
         {
@@ -184,12 +195,12 @@ describe("AuthService", () => {
       );
       vi.mocked(usersService.create).mockResolvedValue(user);
       vi.mocked(sessionService.createSession).mockResolvedValue(
-        {} as import("../../../entities/session.entity.js").Session,
+        {} as import("../../entities/session.entity.js").Session,
       );
 
       const result = await authService.register({
         email: "test@example.com",
-        password: "strongPass123",
+        password: "Correct-Horse-Battery-Staple-2024!",
         name: "Test User",
       });
 
@@ -202,7 +213,9 @@ describe("AuthService", () => {
         }),
       });
       expect(result.user).not.toHaveProperty("passwordHash");
-      expect(hashService.hashPassword).toHaveBeenCalledWith("strongPass123");
+      expect(hashService.hashPassword).toHaveBeenCalledWith(
+        "Correct-Horse-Battery-Staple-2024!",
+      );
       expect(usersService.create).toHaveBeenCalledWith({
         email: "test@example.com",
         passwordHash: "hashed_new_password",
@@ -217,9 +230,21 @@ describe("AuthService", () => {
       await expect(
         authService.register({
           email: "test@example.com",
-          password: "strongPass123",
+          password: "Correct-Horse-Battery-Staple-2024!",
         }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it("throws BadRequestException for weak password (score < 3)", async () => {
+      vi.mocked(usersService.findByEmail).mockResolvedValue(null);
+
+      await expect(
+        authService.register({
+          email: "test@example.com",
+          password: "password",
+          name: "Test User",
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -227,7 +252,7 @@ describe("AuthService", () => {
     it("generates token pair and creates session", async () => {
       const user = mockUser();
       vi.mocked(sessionService.createSession).mockResolvedValue(
-        {} as import("../../../entities/session.entity.js").Session,
+        {} as import("../../entities/session.entity.js").Session,
       );
 
       const result = await authService.login(user, "Mozilla/5.0", "127.0.0.1");
@@ -250,7 +275,7 @@ describe("AuthService", () => {
     it("works without user-agent and ip", async () => {
       const user = mockUser();
       vi.mocked(sessionService.createSession).mockResolvedValue(
-        {} as import("../../../entities/session.entity.js").Session,
+        {} as import("../../entities/session.entity.js").Session,
       );
 
       const result = await authService.login(user);
@@ -276,7 +301,7 @@ describe("AuthService", () => {
       vi.mocked(usersService.findById).mockResolvedValue(user);
       vi.mocked(jwtService.sign).mockReturnValue("new-access-token");
       vi.mocked(sessionService.createSession).mockResolvedValue(
-        {} as import("../../../entities/session.entity.js").Session,
+        {} as import("../../entities/session.entity.js").Session,
       );
 
       const result = await authService.refreshAccessToken(
@@ -290,7 +315,7 @@ describe("AuthService", () => {
         accessToken: "new-access-token",
         refreshToken: "new-access-token",
       });
-      expect(sessionService.revokeSession).toHaveBeenCalledWith(
+      expect(sessionService.consumeSession).toHaveBeenCalledWith(
         "session-1",
         "user-1",
       );
@@ -304,30 +329,38 @@ describe("AuthService", () => {
         authService.refreshAccessToken("nonexistent", "session-1"),
       ).rejects.toThrow(UnauthorizedException);
     });
+
+    it("throws UnauthorizedException when session already consumed", async () => {
+      const user = mockUser();
+      vi.mocked(usersService.findById).mockResolvedValue(user);
+      vi.mocked(sessionService.consumeSession).mockResolvedValue(false);
+
+      await expect(
+        authService.refreshAccessToken("user-1", "session-1"),
+      ).rejects.toThrow(UnauthorizedException);
+    });
   });
 
   describe("logout", () => {
-    it("revokes session when refresh token matches", async () => {
-      const session = { id: "session-1", refreshToken: "hashed-rt-1" };
-      vi.mocked(sessionService.findByUserId).mockResolvedValue([
-        session as import("../../../entities/session.entity.js").Session,
-      ]);
+    it("revokes session via direct hash lookup", async () => {
+      const session = { id: "session-1" };
+      vi.mocked(sessionService.findByRefreshTokenHash).mockResolvedValue(
+        session as import("../../entities/session.entity.js").Session,
+      );
 
       await authService.logout("user-1", "rt-1");
 
+      expect(sessionService.findByRefreshTokenHash).toHaveBeenCalledWith(
+        "hashed-rt-1",
+      );
       expect(sessionService.revokeSession).toHaveBeenCalledWith(
         "session-1",
         "user-1",
       );
     });
 
-    it("does nothing when session token doesnt match", async () => {
-      vi.mocked(sessionService.findByUserId).mockResolvedValue([
-        {
-          id: "session-1",
-          refreshToken: "hashed-rt-1",
-        } as import("../../../entities/session.entity.js").Session,
-      ]);
+    it("does nothing when session not found", async () => {
+      vi.mocked(sessionService.findByRefreshTokenHash).mockResolvedValue(null);
 
       await authService.logout("user-1", "non-matching-token");
 
@@ -337,7 +370,7 @@ describe("AuthService", () => {
     it("does nothing when no session token provided", async () => {
       await authService.logout("user-1");
 
-      expect(sessionService.findByUserId).not.toHaveBeenCalled();
+      expect(sessionService.findByRefreshTokenHash).not.toHaveBeenCalled();
       expect(sessionService.revokeSession).not.toHaveBeenCalled();
     });
   });
