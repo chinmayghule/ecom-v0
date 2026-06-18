@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { doubleCsrf } from "csrf-csrf";
 import type { Request, Response } from "express";
 
-const { doubleCsrfProtection, generateToken: csrfGenerateToken } = doubleCsrf({
+const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
   getSecret: () => process.env.CSRF_SECRET ?? "change-me-in-production",
   getSessionIdentifier: (req) => req.cookies?.refreshToken ?? req.ip,
   cookieName: "__Host-psifi.x-csrf-token",
@@ -22,6 +22,6 @@ export { doubleCsrfProtection };
 @Injectable()
 export class CsrfService {
   generateToken(req: Request, res: Response): string {
-    return csrfGenerateToken(req, res);
+    return generateCsrfToken(req, res);
   }
 }
