@@ -20,7 +20,7 @@ export function IsStrongPassword(validationOptions?: ValidationOptions) {
         validate(value: unknown) {
           if (typeof value !== "string") return false;
           const result = zxcvbn(value);
-          return result.score >= 3;
+          return result.score >= 1;
         },
         defaultMessage: () =>
           "Password is too weak. Choose a stronger password with a mix of characters.",

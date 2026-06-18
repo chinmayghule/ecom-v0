@@ -359,10 +359,12 @@ describe("AuthService", () => {
       );
     });
 
-    it("does nothing when session not found", async () => {
+    it("throws UnauthorizedException when session not found", async () => {
       vi.mocked(sessionService.findByRefreshTokenHash).mockResolvedValue(null);
 
-      await authService.logout("user-1", "non-matching-token");
+      await expect(
+        authService.logout("user-1", "non-matching-token"),
+      ).rejects.toThrow(UnauthorizedException);
 
       expect(sessionService.revokeSession).not.toHaveBeenCalled();
     });

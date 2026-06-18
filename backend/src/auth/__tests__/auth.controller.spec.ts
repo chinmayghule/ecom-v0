@@ -9,7 +9,6 @@ import { UsersService } from "../../users/users.service.js";
 import { AuthController } from "../auth.controller.js";
 import { AuthService } from "../auth.service.js";
 import { BruteForceService } from "../brute-force.service.js";
-import { CsrfService } from "../csrf.service.js";
 import { SessionService } from "../session.service.js";
 
 const mockUser = (overrides: Partial<User> = {}): User =>
@@ -30,7 +29,6 @@ describe("AuthController", () => {
   let controller: AuthController;
   let authService: AuthService;
   let usersService: UsersService;
-  let csrfService: CsrfService;
 
   const mockRes = (): Partial<Response> => ({
     cookie: vi.fn().mockReturnThis(),
@@ -85,12 +83,6 @@ describe("AuthController", () => {
           },
         },
         {
-          provide: CsrfService,
-          useValue: {
-            generateToken: vi.fn().mockReturnValue("mock-csrf-token"),
-          },
-        },
-        {
           provide: SessionService,
           useValue: {
             findByUserId: vi.fn().mockResolvedValue([]),
@@ -125,7 +117,6 @@ describe("AuthController", () => {
     controller = module.get(AuthController);
     authService = module.get(AuthService);
     usersService = module.get(UsersService);
-    csrfService = module.get(CsrfService);
   });
 
   describe("POST /auth/register", () => {
@@ -189,18 +180,6 @@ describe("AuthController", () => {
       await expect(
         controller.login(dto, req as Request, res as Response),
       ).rejects.toThrow("Invalid credentials");
-    });
-  });
-
-  describe("GET /auth/csrf-token", () => {
-    it("returns csrf token", () => {
-      const req = mockReq();
-      const res = mockRes();
-
-      const result = controller.getCsrfToken(req as Request, res as Response);
-
-      expect(csrfService.generateToken).toHaveBeenCalledWith(req, res);
-      expect(result).toEqual({ csrfToken: "mock-csrf-token" });
     });
   });
 

@@ -19,7 +19,6 @@ import { User } from "../entities/user.entity.js";
 import { UsersService } from "../users/users.service.js";
 import { AuthService } from "./auth.service.js";
 import { BruteForceService } from "./brute-force.service.js";
-import { CsrfService } from "./csrf.service.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
@@ -43,16 +42,9 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly bruteForceService: BruteForceService,
-    private readonly csrfService: CsrfService,
     private readonly sessionService: SessionService,
     private readonly usersService: UsersService,
   ) {}
-
-  @Get("csrf-token")
-  getCsrfToken(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const token = this.csrfService.generateToken(req, res);
-    return { csrfToken: token };
-  }
 
   @Post("register")
   async register(
@@ -102,6 +94,7 @@ export class AuthController {
   }
 
   @UseGuards(RefreshTokenGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post("refresh")
   async refresh(
     @CurrentUser() user: { id: string; sessionId: string },

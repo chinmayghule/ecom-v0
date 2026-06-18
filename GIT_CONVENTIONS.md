@@ -1,4 +1,6 @@
-# Commit Style
+# Git Conventions
+
+## Commit style
 
 This project follows **Conventional Commits** (`<type>(<scope>): <description>`).
 
@@ -45,3 +47,16 @@ Squash-merge into main. The squashed commit message becomes the merge title.
 ## Scope rule
 
 Do not use a scope when the change touches multiple packages or is cross-cutting. Use a scope when the change is confined to one module.
+
+## Branch naming
+
+Follow the [Conventional Branch](https://conventionalbranch.org/) spec — same categories as commit types (`feature/`, `fix/`, `chore/`, `release/`, etc.) followed by a kebab-case description.
+
+```
+feature/add-payment-gateway
+fix/null-pointer-in-checkout
+chore/upgrade-deps
+release/v2.1.0
+```
+
+Do NOT use tool-specific prefixes (`gsd/`, `claude/`, etc.).
