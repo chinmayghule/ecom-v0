@@ -3,13 +3,13 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { EmailModule } from "../email/email.module.js";
 import { LoginAttempt } from "../entities/login-attempt.entity.js";
 import { Session } from "../entities/session.entity.js";
 import { UsersModule } from "../users/users.module.js";
 import { AuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
 import { BruteForceService } from "./brute-force.service.js";
-import { CsrfService } from "./csrf.service.js";
 import { ResetToken } from "./entities/reset-token.entity.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
 import { PoliciesGuard } from "./guards/policies.guard.js";
@@ -44,12 +44,12 @@ import { TokenHashService } from "./token-hash.service.js";
       }),
     }),
     TypeOrmModule.forFeature([Session, ResetToken, LoginAttempt]),
+    EmailModule.forRoot(),
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
     BruteForceService,
-    CsrfService,
     SessionService,
     HashService,
     TokenHashService,

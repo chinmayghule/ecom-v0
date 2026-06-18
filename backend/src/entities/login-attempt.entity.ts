@@ -18,9 +18,9 @@ export class LoginAttempt {
   @Column({ default: 0 })
   failedAttempts!: number;
 
-  @Column({ type: "timestamp", nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   lockedUntil: Date | null = null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: "timestamptz" })
   createdAt!: Date;
 }

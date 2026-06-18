@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -66,7 +67,7 @@ export class AuthService {
 
     // Service-level password strength check with user-specific inputs
     const zxcvbnResult = zxcvbn(dto.password, [dto.email, dto.name ?? ""]);
-    if (zxcvbnResult.score < 3) {
+    if (zxcvbnResult.score < 2) {
       const feedback = zxcvbnResult.feedback?.suggestions?.join(" ") ?? "";
       throw new BadRequestException(`Password is too weak. ${feedback}`.trim());
     }
@@ -124,6 +125,8 @@ export class AuthService {
         await this.sessionService.findByRefreshTokenHash(tokenHash);
       if (session) {
         await this.sessionService.revokeSession(session.id, userId);
+      } else {
+        throw new UnauthorizedException("Session not found or already revoked");
       }
     }
   }
@@ -161,6 +164,13 @@ export class AuthService {
     if (!resetToken) {
       throw new BadRequestException("Invalid or expired reset token");
     }
+
+    const zxcvbnResult = zxcvbn(newPassword);
+    if (zxcvbnResult.score < 1) {
+      const feedback = zxcvbnResult.feedback?.suggestions?.join(" ") ?? "";
+      throw new BadRequestException(`Password is too weak. ${feedback}`.trim());
+    }
+
     const passwordHash = await this.hashService.hashPassword(newPassword);
     await this.usersService.update(resetToken.userId, { passwordHash });
     await this.resetTokenService.markUsed(resetToken.id);
@@ -213,7 +223,7 @@ export class AuthService {
 
   private generateRefreshToken(user: User): string {
     return this.jwtService.sign(
-      { sub: user.id },
+      { sub: user.id, jti: randomUUID() },
       {
         secret: this.configService.get<string>("JWT_REFRESH_SECRET"),
         expiresIn: this.configService.get<string>(

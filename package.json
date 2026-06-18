@@ -17,7 +17,10 @@
       "argon2",
       "esbuild",
       "lefthook"
-    ]
+    ],
+    "patchedDependencies": {
+      "zxcvbn-ts@2.2.1": "patches/zxcvbn-ts@2.2.1.patch"
+    }
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
