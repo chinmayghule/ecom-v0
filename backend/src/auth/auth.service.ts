@@ -219,7 +219,7 @@ export class AuthService {
         expiresIn: this.configService.get<string>(
           "JWT_REFRESH_EXPIRATION_MS",
           "7d",
-        ),
+        ) as unknown as number,
       },
     );
   }
