@@ -1,20 +1,11 @@
 import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import * as argon2 from "argon2";
 import type { Repository } from "typeorm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ResetToken } from "../entities/reset-token.entity.js";
 import { ResetTokenService } from "../reset-token.service.js";
-
-vi.mock("argon2", () => ({
-  default: {
-    hash: vi.fn().mockResolvedValue("hashed-argon2-token"),
-    verify: vi.fn(),
-  },
-  hash: vi.fn().mockResolvedValue("hashed-argon2-token"),
-  verify: vi.fn(),
-}));
+import { TokenHashService } from "../token-hash.service.js";
 
 const mockResetToken = (overrides: Partial<ResetToken> = {}): ResetToken =>
   ({
@@ -42,7 +33,7 @@ describe("ResetTokenService", () => {
           useValue: {
             create: vi.fn(),
             save: vi.fn(),
-            find: vi.fn(),
+            findOne: vi.fn(),
             update: vi.fn(),
           },
         },
@@ -54,6 +45,12 @@ describe("ResetTokenService", () => {
               .mockImplementation(
                 (_key: string, defaultValue?: string) => defaultValue ?? null,
               ),
+          },
+        },
+        {
+          provide: TokenHashService,
+          useValue: {
+            hash: vi.fn((token: string) => `hashed-${token}`),
           },
         },
       ],
@@ -102,45 +99,33 @@ describe("ResetTokenService", () => {
   describe("validate", () => {
     it("returns token when valid and not expired", async () => {
       const token = mockResetToken();
-      vi.mocked(repo.find).mockResolvedValue([token]);
-      vi.mocked(argon2.verify).mockResolvedValue(true);
+      vi.mocked(repo.findOne).mockResolvedValue(token);
 
       const result = await service.validate("valid-raw-token");
 
       expect(result).toEqual(token);
-      expect(repo.find).toHaveBeenCalledWith({
-        where: { usedAt: expect.any(Object) },
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: {
+          token: "hashed-valid-raw-token",
+          usedAt: expect.any(Object),
+          expiresAt: expect.any(Object),
+        },
       });
     });
 
     it("returns null when no tokens exist", async () => {
-      vi.mocked(repo.find).mockResolvedValue([]);
+      vi.mocked(repo.findOne).mockResolvedValue(null);
 
       const result = await service.validate("any-token");
 
       expect(result).toBeNull();
     });
 
-    it("skips expired tokens and returns null if none valid", async () => {
-      const expiredToken = mockResetToken({
-        expiresAt: new Date(Date.now() - 3600000),
-      });
-      vi.mocked(repo.find).mockResolvedValue([expiredToken]);
+    it("returns null when token expired", async () => {
+      vi.mocked(repo.findOne).mockResolvedValue(null);
 
       const result = await service.validate("expired-token");
 
-      expect(argon2.verify).not.toHaveBeenCalled();
-      expect(result).toBeNull();
-    });
-
-    it("skips tokens with mismatched hash and tries next", async () => {
-      const validToken = mockResetToken();
-      vi.mocked(repo.find).mockResolvedValue([validToken]);
-      vi.mocked(argon2.verify).mockResolvedValue(false);
-
-      const result = await service.validate("wrong-token");
-
-      expect(argon2.verify).toHaveBeenCalled();
       expect(result).toBeNull();
     });
   });

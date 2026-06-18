@@ -3,8 +3,11 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { User } from "../../entities/user.entity.js";
 
 @Entity("reset_tokens")
 export class ResetToken {
@@ -14,6 +17,10 @@ export class ResetToken {
   @Index()
   @Column()
   userId!: string;
+
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
+  user!: User;
 
   @Index()
   @Column()

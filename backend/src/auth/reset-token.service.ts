@@ -2,9 +2,9 @@ import crypto from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
-import * as argon2 from "argon2";
-import { IsNull, Repository } from "typeorm";
+import { IsNull, MoreThan, Repository } from "typeorm";
 import { ResetToken } from "./entities/reset-token.entity.js";
+import { TokenHashService } from "./token-hash.service.js";
 
 @Injectable()
 export class ResetTokenService {
@@ -12,11 +12,12 @@ export class ResetTokenService {
     @InjectRepository(ResetToken)
     private readonly repo: Repository<ResetToken>,
     private readonly configService: ConfigService,
+    private readonly tokenHashService: TokenHashService,
   ) {}
 
   async create(userId: string): Promise<{ rawToken: string }> {
     const rawToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = await argon2.hash(rawToken);
+    const hashedToken = this.tokenHashService.hash(rawToken);
     const expiresInMs = parseInt(
       this.configService.get("RESET_TOKEN_EXPIRATION_MS", "3600000"),
       10,
@@ -35,17 +36,14 @@ export class ResetTokenService {
   }
 
   async validate(token: string): Promise<ResetToken | null> {
-    const tokens = await this.repo.find({
-      where: { usedAt: IsNull() },
+    const hashedToken = this.tokenHashService.hash(token);
+    return this.repo.findOne({
+      where: {
+        token: hashedToken,
+        usedAt: IsNull(),
+        expiresAt: MoreThan(new Date()),
+      },
     });
-
-    for (const resetToken of tokens) {
-      if (resetToken.expiresAt < new Date()) continue;
-      const valid = await argon2.verify(resetToken.token, token);
-      if (valid) return resetToken;
-    }
-
-    return null;
   }
 
   async markUsed(id: string): Promise<void> {

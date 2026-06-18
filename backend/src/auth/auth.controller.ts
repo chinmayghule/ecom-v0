@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   Post,
@@ -11,10 +13,13 @@ import {
   UnauthorizedException,
   UseGuards,
 } from "@nestjs/common";
-import type { Response } from "express";
+import { Throttle } from "@nestjs/throttler";
+import type { Request, Response } from "express";
 import { User } from "../entities/user.entity.js";
 import { UsersService } from "../users/users.service.js";
 import { AuthService } from "./auth.service.js";
+import { BruteForceService } from "./brute-force.service.js";
+import { CsrfService } from "./csrf.service.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto.js";
 import { LoginDto } from "./dto/login.dto.js";
@@ -37,14 +42,21 @@ const REFRESH_COOKIE_OPTIONS = {
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly bruteForceService: BruteForceService,
+    private readonly csrfService: CsrfService,
     private readonly sessionService: SessionService,
     private readonly usersService: UsersService,
   ) {}
 
+  @Get("csrf-token")
+  getCsrfToken(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const token = this.csrfService.generateToken(req, res);
+    return { csrfToken: token };
+  }
+
   @Post("register")
   async register(
     @Body() dto: RegisterDto,
-    @Req() req: any,
     @Res({ passthrough: true }) res: Response,
   ) {
     const { accessToken, refreshToken } = await this.authService.register(dto);
@@ -55,11 +67,31 @@ export class AuthController {
   @Post("login")
   async login(
     @Body() dto: LoginDto,
-    @Req() req: any,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    // Look up user before credential validation to check lockout
+    const userByEmail = await this.usersService.findByEmail(dto.email);
+    if (userByEmail) {
+      const locked = await this.bruteForceService.isLocked(userByEmail.id);
+      if (locked) {
+        throw new UnauthorizedException(
+          "Account temporarily locked due to too many failed attempts",
+        );
+      }
+    }
+
     const user = await this.authService.validateUser(dto.email, dto.password);
-    if (!user) throw new UnauthorizedException("Invalid credentials");
+    if (!user) {
+      // Record failed attempt for existing users
+      if (userByEmail) {
+        await this.bruteForceService.recordFailedAttempt(userByEmail.id);
+      }
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    // Reset attempts on successful login
+    await this.bruteForceService.resetAttempts(user.id);
     const { accessToken, refreshToken } = await this.authService.login(
       user,
       req.headers["user-agent"],
@@ -71,20 +103,35 @@ export class AuthController {
 
   @UseGuards(RefreshTokenGuard)
   @Post("refresh")
-  async refresh(@CurrentUser() user: { id: string }) {
-    return this.authService.refreshAccessToken(user.id);
+  async refresh(
+    @CurrentUser() user: { id: string; sessionId: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.refreshAccessToken(
+      user.id,
+      user.sessionId,
+      req.headers["user-agent"],
+      req.ip,
+    );
+    res.cookie("refreshToken", tokens.refreshToken, REFRESH_COOKIE_OPTIONS);
+    return { accessToken: tokens.accessToken };
   }
 
-  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
+  @UseGuards(JwtAuthGuard)
   @Post("logout")
-  async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
+  async logout(
+    @CurrentUser() user: { id: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const refreshToken = req.cookies?.refreshToken;
-    await this.authService.logout(req.user.id, refreshToken);
+    await this.authService.logout(user.id, refreshToken);
     res.clearCookie("refreshToken", REFRESH_COOKIE_OPTIONS);
     return { message: "Logged out successfully" };
   }
 
-  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("me")
   async getProfile(@CurrentUser() user: { id: string }) {
     const found = await this.usersService.findById(user.id);
@@ -93,7 +140,7 @@ export class AuthController {
     return profile;
   }
 
-  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
+  @UseGuards(JwtAuthGuard)
   @Get("sessions")
   async getSessions(@CurrentUser() user: User) {
     const sessions = await this.sessionService.findByUserId(user.id);
@@ -110,39 +157,44 @@ export class AuthController {
     );
   }
 
-  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
+  @UseGuards(JwtAuthGuard)
   @Delete("sessions/:id")
   async revokeSession(@CurrentUser() user: User, @Param("id") id: string) {
     await this.sessionService.revokeSession(id, user.id);
     return { message: "Session revoked" };
   }
 
-  @UseGuards(JwtAuthGuard, RefreshTokenGuard)
+  @UseGuards(JwtAuthGuard)
   @Post("sessions/revoke-all")
   async revokeAllSessions(
-    @Req() req: any,
+    @CurrentUser() user: { id: string },
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const refreshToken = req.cookies?.refreshToken;
-    const currentSession = refreshToken
-      ? (await this.sessionService.findByUserId(req.user.id)).find(
-          (s) => s.refreshToken === refreshToken,
-        )
-      : null;
+    let currentSessionId: string | undefined;
 
-    await this.sessionService.revokeAllSessions(
-      req.user.id,
-      currentSession?.id,
-    );
+    if (refreshToken) {
+      const validated = await this.sessionService.validateRefreshToken(
+        user.id,
+        refreshToken,
+      );
+      currentSessionId = validated?.id;
+    }
+
+    await this.sessionService.revokeAllSessions(user.id, currentSessionId);
     res.clearCookie("refreshToken", REFRESH_COOKIE_OPTIONS);
     return { message: "All other sessions revoked" };
   }
 
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post("forgot-password")
+  @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto.email);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post("reset-password")
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password);

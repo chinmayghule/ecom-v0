@@ -1,19 +1,21 @@
 import path from "node:path";
-import { Module } from "@nestjs/common";
+import { Module, RequestMethod } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { AppController } from "./app.controller.js";
-import { AppService } from "./app.service.js";
+import { LoggerModule } from "nestjs-pino";
 import { AuthModule } from "./auth/auth.module.js";
 import { ResetToken } from "./auth/entities/reset-token.entity.js";
+import { validate } from "./config/env.validation.js";
+import { EmailModule } from "./email/email.module.js";
 import {
   Address,
   Cart,
   CartItem,
   Category,
   Inventory,
+  LoginAttempt,
   Order,
   OrderItem,
   Product,
@@ -21,11 +23,13 @@ import {
   Session,
   User,
 } from "./entities/index.js";
+import { HealthModule } from "./health/health.module.js";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      validate,
       envFilePath: [
         path.resolve(process.cwd(), ".env"),
         path.resolve(process.cwd(), "..", ".env"),
@@ -35,11 +39,11 @@ import {
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         type: "postgres",
-        host: config.get<string>("DATABASE_HOST"),
-        port: config.get<number>("DATABASE_PORT"),
-        username: config.get<string>("DATABASE_USER"),
-        password: config.get<string>("DATABASE_PASSWORD"),
-        database: config.get<string>("DATABASE_NAME"),
+        host: config.getOrThrow<string>("DATABASE_HOST"),
+        port: config.getOrThrow<number>("DATABASE_PORT"),
+        username: config.getOrThrow<string>("DATABASE_USER"),
+        password: config.getOrThrow<string>("DATABASE_PASSWORD"),
+        database: config.getOrThrow<string>("DATABASE_NAME"),
         entities: [
           User,
           Product,
@@ -50,6 +54,7 @@ import {
           Inventory,
           Cart,
           CartItem,
+          LoginAttempt,
           Order,
           OrderItem,
           ResetToken,
@@ -61,6 +66,34 @@ import {
       }),
       inject: [ConfigService],
     }),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        name: "ecom-v0",
+        level: process.env.NODE_ENV === "production" ? "info" : "trace",
+        transport:
+          process.env.NODE_ENV !== "production"
+            ? { target: "pino-pretty", options: { colorize: true } }
+            : undefined,
+        redact: {
+          paths: [
+            "password",
+            "token",
+            "authorization",
+            "cookie",
+            "secret",
+            "req.headers.cookie",
+            "req.headers.authorization",
+            "body.password",
+            "body.token",
+          ],
+          censor: "[REDACTED]",
+        },
+        autoLogging: {
+          ignore: (req) => req.url === "/health",
+        },
+      },
+      exclude: [{ method: RequestMethod.ALL, path: "health" }],
+    }),
     AuthModule,
     ThrottlerModule.forRoot([
       {
@@ -68,14 +101,15 @@ import {
         limit: 100,
       },
     ]),
+    EmailModule.forRoot(),
+    HealthModule,
   ],
-  controllers: [AppController],
+  controllers: [],
   providers: [
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     },
-    AppService,
   ],
 })
 export class AppModule {}

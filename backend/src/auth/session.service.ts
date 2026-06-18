@@ -1,13 +1,17 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import type { DeepPartial } from "typeorm";
 import { Repository } from "typeorm";
 import { type DeviceInfo, Session } from "../entities/session.entity.js";
+import { User } from "../entities/user.entity.js";
+import { TokenHashService } from "./token-hash.service.js";
 
 @Injectable()
 export class SessionService {
   constructor(
     @InjectRepository(Session)
     private readonly sessionRepo: Repository<Session>,
+    private readonly tokenHashService: TokenHashService,
   ) {}
 
   async createSession(
@@ -18,9 +22,10 @@ export class SessionService {
     ipAddress?: string,
     deviceInfo?: DeviceInfo,
   ): Promise<Session> {
+    const hashedToken = this.tokenHashService.hash(refreshToken);
     const session = this.sessionRepo.create({
-      user: { id: userId } as any,
-      refreshToken,
+      user: { id: userId } as DeepPartial<User>,
+      refreshToken: hashedToken,
       expiresAt,
       userAgent: userAgent ?? null,
       ipAddress: ipAddress ?? null,
@@ -28,6 +33,10 @@ export class SessionService {
       lastActiveAt: new Date(),
     });
     return this.sessionRepo.save(session);
+  }
+
+  async findByRefreshTokenHash(hash: string): Promise<Session | null> {
+    return this.sessionRepo.findOne({ where: { refreshToken: hash } });
   }
 
   async findByUserId(userId: string): Promise<Session[]> {
@@ -43,6 +52,19 @@ export class SessionService {
 
   async revokeSession(id: string, userId: string): Promise<void> {
     await this.sessionRepo.delete({ id, user: { id: userId } });
+  }
+
+  /**
+   * Atomically consumes a session by deleting it.
+   * Returns true if a session was deleted, false if already consumed.
+   * Used for refresh token rotation to prevent race conditions.
+   */
+  async consumeSession(sessionId: string, userId: string): Promise<boolean> {
+    const result = await this.sessionRepo.delete({
+      id: sessionId,
+      user: { id: userId },
+    });
+    return (result.affected ?? 0) > 0;
   }
 
   async revokeAllSessions(
@@ -73,8 +95,9 @@ export class SessionService {
     userId: string,
     refreshToken: string,
   ): Promise<Session | null> {
+    const hashedToken = this.tokenHashService.hash(refreshToken);
     const session = await this.sessionRepo.findOne({
-      where: { user: { id: userId }, refreshToken },
+      where: { user: { id: userId }, refreshToken: hashedToken },
     });
     if (!session) return null;
     if (new Date() > session.expiresAt) {

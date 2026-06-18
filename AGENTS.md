@@ -59,9 +59,9 @@ Run all commands from the package directory (`backend/`, `frontend/`, etc.), not
 
 ---
 
-## Frontend (planned)
+## Frontend
 
-Next.js with SSR. Storybook for UI documentation. No code yet.
+Next.js with App Router, TypeScript, Tailwind CSS. See `./ecom_project_master.md` for full stack decisions.
 
 ---
 
