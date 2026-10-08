@@ -37,7 +37,7 @@ describe("BruteForceService", () => {
 
       expect(result).toBe(false);
       expect(repo.findOne).toHaveBeenCalledWith({
-        where: { userId: "user-1" },
+        where: { user: { id: "user-1" } },
       });
     });
 
@@ -70,7 +70,7 @@ describe("BruteForceService", () => {
       const result = await service.isLocked("user-1");
 
       expect(result).toBe(false);
-      expect(repo.delete).toHaveBeenCalledWith({ userId: "user-1" });
+      expect(repo.delete).toHaveBeenCalledWith({ user: { id: "user-1" } });
     });
 
     it("returns false when lockedUntil is null", async () => {
@@ -101,7 +101,7 @@ describe("BruteForceService", () => {
       await service.recordFailedAttempt("user-1");
 
       expect(repo.create).toHaveBeenCalledWith({
-        userId: "user-1",
+        user: { id: "user-1" },
         failedAttempts: 1,
         lockedUntil: null,
       });
@@ -169,7 +169,7 @@ describe("BruteForceService", () => {
 
       await service.resetAttempts("user-1");
 
-      expect(repo.delete).toHaveBeenCalledWith({ userId: "user-1" });
+      expect(repo.delete).toHaveBeenCalledWith({ user: { id: "user-1" } });
     });
   });
 });

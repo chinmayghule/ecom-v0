@@ -172,7 +172,7 @@ export class AuthService {
     }
 
     const passwordHash = await this.hashService.hashPassword(newPassword);
-    await this.usersService.update(resetToken.userId, { passwordHash });
+    await this.usersService.update(resetToken.user.id, { passwordHash });
     await this.resetTokenService.markUsed(resetToken.id);
     return { message: "Password has been reset successfully." };
   }

@@ -3,8 +3,10 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { User } from "./user.entity.js";
 
 @Entity("login_attempts")
 export class LoginAttempt {
@@ -12,8 +14,8 @@ export class LoginAttempt {
   id!: string;
 
   @Index()
-  @Column()
-  userId!: string;
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  user!: User;
 
   @Column({ default: 0 })
   failedAttempts!: number;

@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import type { DeepPartial } from "typeorm";
 import { Repository } from "typeorm";
 import { LoginAttempt } from "../entities/login-attempt.entity.js";
+import { User } from "../entities/user.entity.js";
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
@@ -15,21 +17,21 @@ export class BruteForceService {
   ) {}
 
   async isLocked(userId: string): Promise<boolean> {
-    const record = await this.repo.findOne({ where: { userId } });
+    const record = await this.repo.findOne({ where: { user: { id: userId } } });
     if (!record) return false;
     if (record.lockedUntil && record.lockedUntil > new Date()) return true;
     if (record.lockedUntil && record.lockedUntil <= new Date()) {
-      await this.repo.delete({ userId });
+      await this.repo.delete({ user: { id: userId } });
     }
     return false;
   }
 
   async recordFailedAttempt(userId: string): Promise<void> {
     const windowStart = new Date(Date.now() - WINDOW_MS);
-    let record = await this.repo.findOne({ where: { userId } });
+    let record = await this.repo.findOne({ where: { user: { id: userId } } });
     if (!record) {
       record = this.repo.create({
-        userId,
+        user: { id: userId } as DeepPartial<User>,
         failedAttempts: 1,
         lockedUntil: null,
       });
@@ -49,6 +51,6 @@ export class BruteForceService {
   }
 
   async resetAttempts(userId: string): Promise<void> {
-    await this.repo.delete({ userId });
+    await this.repo.delete({ user: { id: userId } });
   }
 }

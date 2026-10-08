@@ -73,7 +73,7 @@ describe("ResetTokenService", () => {
       expect(result.rawToken.length).toBe(64);
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: "user-1",
+          user: { id: "user-1" },
           expiresAt: expect.any(Date),
         }),
       );
@@ -110,6 +110,7 @@ describe("ResetTokenService", () => {
           usedAt: expect.any(Object),
           expiresAt: expect.any(Object),
         },
+        relations: { user: true },
       });
     });
 

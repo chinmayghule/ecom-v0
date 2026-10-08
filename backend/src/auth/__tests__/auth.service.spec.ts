@@ -403,7 +403,7 @@ describe("AuthService", () => {
 
   describe("resetPassword", () => {
     it("validates token, updates password, and marks token used", async () => {
-      const mockResetToken = { id: "reset-1", userId: "user-1" };
+      const mockResetToken = { id: "reset-1", user: { id: "user-1" } };
       vi.mocked(resetTokenService.validate).mockResolvedValue(
         mockResetToken as import("../entities/reset-token.entity.js").ResetToken,
       );

@@ -3,7 +3,6 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
@@ -14,12 +13,7 @@ export class ResetToken {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Index()
-  @Column()
-  userId!: string;
-
   @ManyToOne(() => User, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "userId" })
   user!: User;
 
   @Index()
