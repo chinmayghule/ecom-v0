@@ -6,7 +6,7 @@
 
 This project exists for **employability**. The goal is to demonstrate that you can design, build, stress-test, deploy, and evolve a real full-stack web system — end to end, without scope collapse.
 
-The secondary goal is to produce something that tells a coherent story across multiple resume updates: starting from a deployed monolith, progressing through hardening and multiple frontends, and culminating in a microservices architecture across two cloud platforms.
+The secondary goal is to produce something that tells a coherent story across multiple resume updates: a deployed monolith, then a hardened monolith under realistic load, then a decomposition into microservices. Optional phases extend that story to a native mobile client and to production-grade operations — they are not on the critical path.
 
 ---
 
@@ -20,7 +20,7 @@ Layers are the functional divisions inside the application. They exist **simulta
 
 | Layer | What it is |
 |---|---|
-| **Frontend** | User-facing UI. Multiple frameworks deployed in parallel from Phase 3. |
+| **Frontend** | User-facing UI. A Next.js web client from Phase 1; an optional React Native mobile client from Phase 4. |
 | **Backend (API)** | Business logic, data access, authentication, authorization. NestJS throughout. |
 | **Database** | Persistent storage. PostgreSQL throughout. |
 | **Infrastructure** | How everything runs locally and in the cloud. Docker locally, free-tier services (Vercel, Render, Neon) then GCP in deployment. |
@@ -31,22 +31,27 @@ Layers are the functional divisions inside the application. They exist **simulta
 
 Phases are **sequential stages of the project**. Each phase produces a complete, deployed, demoable product — not just a layer or a feature. Earlier phases are not discarded. Each phase builds on and extends the previous one.
 
-There are five phases.
+There are five phases. Phases 1–3 are the core: each one ships a complete, deployed, demoable product, and together they carry the employability story. Phases 4 and 5 are **optional extensions** — they deepen the story but are not required before the core phases count as delivered. Scope the project by finishing Phases 1–3; treat everything after that as additive if time allows.
+
+| | Phases | Status |
+|---|---|---|
+| **Core** | 1 — Complete Monolith, 2 — Hardened Monolith, 3 — Microservices | On the critical path |
+| **Optional** | 4 — Mobile Client, 5 — Production Microservices | Extensions, see each phase for when they are worth doing |
 
 ### 2.3 Architectural Modes
 
 The project transitions between two architectural modes:
 
-- **Monolith** (Phases 1–3): The entire backend is one deployable NestJS application.
-- **Microservices** (Phases 4–5): The backend is decomposed into independent, separately deployable NestJS services communicating via a message broker.
+- **Monolith** (Phases 1–2): The entire backend is one deployable NestJS application.
+- **Microservices** (Phases 3–5): The backend is decomposed into independent, separately deployable NestJS services communicating via a message broker.
 
 ### 2.4 Environments
 
 | Environment | How |
 |---|---|
 | **Local** | Docker Compose. Runs the full stack on your machine. Present at every phase. |
-| **Deployed — Free Tier** | Phases 1–3. Vercel (frontend) + Render (backend) + Neon (PostgreSQL). All free tier. |
-| **Deployed — GCP** | Phases 4–5. Cloud Run. Permanently free at portfolio traffic levels. |
+| **Deployed — Free Tier** | Phases 1–2, plus optional Phase 4. Vercel (web frontend) + Render (backend) + Neon (PostgreSQL). All free tier. |
+| **Deployed — GCP** | Phases 3–5. Cloud Run. Permanently free at portfolio traffic levels. |
 
 ---
 
@@ -72,7 +77,7 @@ Everything used across the entire project, organized by layer. This list capture
 | Seed data | Faker.js | |
 | Testing — unit + integration | Vitest | |
 | Testing — E2E API | Supertest | Runs against the live NestJS app in test environment |
-| Microservices transport (Phase 4+) | NestJS Microservices | Built into NestJS |
+| Microservices transport (Phase 3+) | NestJS Microservices | Built into NestJS |
 
 ### 3.2 Frontend — Next.js (Primary, Phase 1+)
 
@@ -86,38 +91,28 @@ Everything used across the entire project, organized by layer. This list capture
 | Forms | React Hook Form + Zod | |
 | Auth flows | Custom JWT handling | Direct JWT in httpOnly cookies / localStorage; no NextAuth |
 | API calls | Express.js route handlers | Next.js API routes using Express.js to call backend; orval optional |
-| Component documentation | Storybook | Added after core UI stabilizes |
+| Component documentation | Storybook | Ships in Phase 1 alongside the web client |
 | Testing — unit | Vitest | |
 | Testing — integration | React Testing Library | Component-level integration tests |
 | Testing — E2E | Playwright | |
 | API mocking (tests) | MSW (Mock Service Worker) | Intercepts at network level; realistic API simulation in tests |
 
-### 3.3 Frontend — Nuxt.js (Phase 3+)
+### 3.3 Frontend — React Native (Phase 4+, optional)
+
+Native mobile client. Optional — see Phase 4 for when it is worth building.
 
 | Concern | Choice | Note |
 |---|---|---|
-| Framework | Nuxt.js | Vue-based |
-| Language | TypeScript | |
-| State management | Pinia | |
-| Styling | Tailwind CSS | |
-| Validation | Zod | |
-| API calls | ofetch | Built into Nuxt |
-| Testing — unit + integration | Vitest + @nuxt/test-utils | Official Nuxt testing utilities |
-| Testing — E2E | Playwright | |
-| API mocking (tests) | MSW | |
-
-### 3.4 Frontend — Angular (Phase 3+)
-
-| Concern | Choice | Note |
-|---|---|---|
-| Framework | Angular | |
-| Language | TypeScript | |
-| UI components | Angular Material | |
-| Auth flows | angular-oauth2-oidc | |
-| Validation | Zod | |
-| Testing — unit + integration | Jest + @testing-library/angular | Deliberate choice over Vitest — Vitest support in Angular is experimental |
-| Testing — E2E | Playwright | |
-| API mocking (tests) | MSW | |
+| Framework | React Native via Expo | Chosen so a build needs no local Xcode or Android Studio |
+| Language | TypeScript | Same as every other package in the workspace |
+| Styling | NativeWind | Tailwind syntax; carries over from the web client |
+| Server state / data fetching | TanStack Query | Same library as the web client |
+| Forms | React Hook Form + Zod | Parity with the web client |
+| Navigation | React Navigation | Expo's recommended option |
+| Token storage | `expo-secure-store` | The web client uses an httpOnly cookie; a native client cannot. Requires an explicit auth decision in Phase 4. |
+| Testing — unit + integration | Jest + @testing-library/react-native | Jest is the ecosystem default for React Native |
+| Testing — E2E | Maestro or Detox | Playwright drives browsers and cannot drive a native app |
+| API mocking (tests) | MSW | Same as the web client |
 
 ### 3.5 Database
 
@@ -143,15 +138,16 @@ Everything used across the entire project, organized by layer. This list capture
 |---|---|---|
 | Pipeline | GitHub Actions | Lint, format check, tests, build — fails fast |
 
-**Free Tier (Phases 1–3)**
+**Free Tier (Phases 1–2, plus optional Phase 4)**
 
 | Resource | Platform | Note |
 |---|---|---|
 | Frontend hosting | Vercel (Hobby) | Auto-deploys from GitHub; free tier |
 | Backend hosting | Render (Web Service) | Auto-deploys from GitHub; free tier |
 | Database | Neon (PostgreSQL) | Serverless Postgres; free tier includes 500MB storage |
+| Mobile builds (optional Phase 4) | Expo EAS Build (Free plan) | 15 Android + 15 iOS builds/month, low-priority queue. No Apple Developer account needed for Android APKs. |
 
-**GCP (Phases 4–5)**
+**GCP (Phases 3–5)**
 
 | Resource | Note |
 |---|---|
@@ -166,8 +162,8 @@ Everything used across the entire project, organized by layer. This list capture
 |---|---|---|
 | Structured logging | Pino | JSON logs from backend; human-readable in local dev |
 | Log ingestion + uptime | BetterStack | Free tier sufficient; present from Phase 1 |
-| Cloud monitoring | N/A (free tier) | No cloud monitoring in Phases 1–3 — BetterStack covers uptime |
-| Distributed tracing (Phase 5) | OpenTelemetry | Instrumentation standard; backend: BetterStack or GCP Cloud Trace |
+| Cloud monitoring | N/A (free tier) | No cloud monitoring in Phases 1–2 — BetterStack covers uptime |
+| Distributed tracing (Phase 5, optional) | OpenTelemetry | Instrumentation standard; backend: BetterStack or GCP Cloud Trace |
 
 ### 3.8 Documentation
 
@@ -177,7 +173,7 @@ Everything used across the entire project, organized by layer. This list capture
 | Reference generation | TypeDoc | Generates API reference from TSDoc |
 | Docs site | Starlight | Astro-based; hosts TypeDoc output |
 | API spec | OpenAPI / Swagger | Auto-generated by NestJS; browsable at `/api` |
-| Typed frontend client | orval | Consumes the OpenAPI spec; used by all three frontends |
+| Typed frontend client | orval | Consumes the OpenAPI spec; used by both the web and mobile clients |
 
 ### 3.9 Tooling
 
@@ -210,6 +206,7 @@ Everything used across the entire project, organized by layer. This list capture
 - TSDoc annotations throughout the backend codebase
 - TypeDoc + Starlight generating a documentation website
 - Next.js frontend consuming the backend via an orval-generated typed client
+- Storybook documenting the shared component library used by the web client
 - Pino structured logging in the backend
 - BetterStack connected for log ingestion and uptime
 - Docker Compose running the full stack locally: NestJS + Next.js + Postgres + pgweb
@@ -218,9 +215,9 @@ Everything used across the entire project, organized by layer. This list capture
 - Lefthook pre-commit and pre-push hooks
 - Deployed on Render (backend) + Vercel (frontend) + Neon (PostgreSQL) — all free tier
 
-**Deferred to later phases:** massive seed data, load testing, Nuxt/Angular, microservices, GCP.
+**Deferred to later phases:** massive seed data and load testing (Phase 2), microservices (Phase 3), and the optional mobile client (Phase 4) and production operations (Phase 5).
 
-**Resume milestone:** *"Full-stack e-commerce platform — NestJS, Next.js, PostgreSQL — deployed on free tier (Render + Vercel + Neon) with CI/CD, structured logging, and auto-generated API and code documentation."*
+**Resume milestone:** *"Full-stack e-commerce platform — NestJS, Next.js, PostgreSQL — deployed on free tier (Render + Vercel + Neon) with CI/CD, structured logging, component documentation via Storybook, and auto-generated API and code documentation."*
 
 ---
 
@@ -242,24 +239,11 @@ Everything used across the entire project, organized by layer. This list capture
 
 ---
 
-### Phase 3 — Multiple Frontends
+### Phase 3 — Microservices on GCP Cloud Run
 
-**Goal:** Demonstrate that you can work across multiple frontend frameworks against the same API. The backend does not change.
+**Goal:** Decompose the monolith into independently deployable services. Redeploy on GCP. Introduce async messaging. This is a fundamentally different architecture, not an extension of Phase 2.
 
-**What gets built:**
-- Nuxt.js frontend: Vue-based, Pinia state management, Tailwind CSS, same feature set as Next.js frontend.
-- Angular frontend: Angular Material components, auth flows, same feature set.
-- All three frontends (Next.js, Nuxt.js, Angular) deployed and accessible in parallel.
-- All frontends on Vercel. Each framework gets its own Vercel project. All pointing at the same backend API.
-- Storybook added to the Next.js frontend for component documentation after the UI stabilizes.
-
-**Resume milestone:** *"Same NestJS API consumed simultaneously by three frontend frameworks — Next.js, Nuxt.js, Angular — each independently deployed."*
-
----
-
-### Phase 4 — Microservices on GCP Cloud Run
-
-**Goal:** Decompose the monolith into independently deployable services. Redeploy on GCP. Introduce async messaging. This is a fundamentally different architecture, not an extension of Phase 3.
+Hardening the monolith first (Phase 2) is deliberate: the index, query, and connection-pool problems diagnosed there are exactly the ones that resurface at service boundaries, so the fixes carry across the split.
 
 **Decomposition (likely service boundaries):**
 - `auth-service` — user registration, login, token issuance and validation
@@ -268,6 +252,8 @@ Everything used across the entire project, organized by layer. This list capture
 - `api-gateway` — single entry point, routes requests to services, handles auth verification
 
 Each service is its own NestJS application with its own TypeORM schema and its own database (or schema-isolated database). They do not share a database.
+
+**Open decision for this phase:** whether each service gets a separate Neon database or a separate schema within one database. Neon supports multiple databases per project, so either is viable; the choice affects isolation guarantees and migration tooling, and should be settled when this phase is planned.
 
 **What gets built:**
 - NestJS Microservices transport wiring per service
@@ -288,7 +274,35 @@ These are the things you talk about in interviews.
 
 ---
 
-### Phase 5 — Production Microservices + Full Observability
+### Phase 4 — Mobile Client (Optional)
+
+**Status: optional.** The core employability story is delivered by Phases 1–3. Build this if targeting roles where mobile client work is a differentiator, or once Phases 1–3 are shipped and stable. It is not on the critical path, and the project is complete without it.
+
+**Goal:** Prove the same backend serves a native client, not just a browser. One API, two very different client platforms.
+
+**Scope:** Customer-facing only — auth, catalog browsing and search, product detail, cart, checkout, and order history. Seller and admin tooling stays on the web client; a phone is the wrong surface for product management, and building it would double the phase's cost for little demonstrable value. Feature parity with the web client is the goal *for the customer journey specifically*, not across every screen.
+
+**What gets built:**
+- React Native app via Expo, consuming the API through the Phase 3 gateway
+- Typed API client generated from the same OpenAPI spec as the web client
+- Customer journey implemented as listed above
+- Android APK built via EAS Build (Free plan) and published as a download from the portfolio site
+
+**Distribution — free tier only:**
+- **Android (primary):** an APK from EAS Build's Free plan, which provides its own signing keystore. No Google Play developer account needed. The reviewer enables "install unknown apps" and installs it. Published from the portfolio site, not a store.
+- **iOS (secondary):** Expo Go plus EAS Update. Installing on an actual iPhone requires a paid Apple Developer Program account for build signing, so a downloadable iOS artifact is out of scope for this project. Expo Go reaches iOS reviewers without that account.
+- **Free plan limits to respect:** 15 Android and 15 iOS builds per month, on a low-priority queue. Build on release only — never wire EAS Build into a per-push CI trigger, or the quota is gone before the month ends.
+- Not doing: Play Store or App Store publication, or a `react-native-web` deployment.
+
+**What this phase demonstrates:** shipping one backend to two client platforms, and making the platform-appropriate choices each requires — secure token storage instead of httpOnly cookies, native navigation, a native test runner instead of Playwright.
+
+**Resume milestone:** *"Same NestJS API serving a Next.js web client and a React Native mobile client — two platforms, one typed API contract, independently built and distributed."*
+
+---
+
+### Phase 5 — Production Microservices + Full Observability (Optional)
+
+**Status: optional.** Consistent with Phase 4: the core story ends at Phase 3. Build this if targeting DevOps or platform engineering roles, where operational maturity is the thing being demonstrated. The project is complete without it.
 
 **Goal:** Make the microservices deployment production-grade. Add distributed tracing, proper per-service observability, and mature the operational story.
 
@@ -306,13 +320,13 @@ These are the things you talk about in interviews.
 
 ---
 
-## 5. The AI Layer (Post Phase 5 Only)
+## 5. The AI Layer (Optional)
 
-After all five phases are complete and deployed, one optional, self-contained AI feature may be added. It must not alter the core backend architecture and must be explainable to a non-technical recruiter in one sentence.
+One optional, self-contained AI feature may be added once the microservices decomposition (Phase 3) is shipped and stable. It must not alter the core backend architecture and must be explainable to a non-technical recruiter in one sentence.
 
 Candidates: natural-language product search over the catalog (pgvector + embedding search), or a conversational commerce assistant on the customer side.
 
-This is not part of the employability-critical core. Do not start this until Phase 5 is shipped.
+**Status: optional.** Like Phases 4 and 5, this is an extension rather than part of the core. If it comes at all, it comes after the Phase 3 decomposition is stable — it does not need to wait on the optional phases, and it must not be started before Phase 3 is shipped.
 
 ---
 
@@ -326,16 +340,18 @@ This is not part of the employability-critical core. Do not start this until Pha
 
 **Job market:** International remote is the primary target. Indian corporate pipelines with ATS filtering are hostile to a no-degree profile and are a secondary target at best. Wellfound (AngelList), Contra, arc.dev, LinkedIn (remote filter), and direct founder/CTO outreach on LinkedIn and Twitter/X are the channels that bypass ATS.
 
-**Minimum resume trigger:** End of Phase 1. Update the resume description incrementally as each phase completes.
+**Minimum resume trigger:** End of Phase 1. Update the resume description incrementally as each core phase completes. Phases 4 and 5 add depth but are not gating.
 
 ---
 
 ## 7. What Each Phase Demonstrates
 
-| Phase | Core demonstration |
-|---|---|
-| 1 | Can design, build, and ship a full-stack system. Understands deployment, CI/CD, documentation. |
-| 2 | Has operated a system under realistic load. Can diagnose and fix real performance problems. |
-| 3 | Is not framework-locked. Can work across the major frontend ecosystems. |
-| 4 | Understands distributed systems tradeoffs. Has navigated an architectural migration. |
-| 5 | Can operate a production microservices system. Understands observability. |
+| Phase | Core demonstration | Status |
+|---|---|---|
+| 1 | Can design, build, and ship a full-stack system. Understands deployment, CI/CD, documentation. | Core |
+| 2 | Has operated a system under realistic load. Can diagnose and fix real performance problems. | Core |
+| 3 | Understands distributed systems tradeoffs. Has navigated an architectural migration. | Core |
+| 4 | Can serve one backend to multiple client platforms, and adapt to each platform's constraints. | Optional |
+| 5 | Can operate a production microservices system. Understands observability. | Optional |
+
+**Where the framework-breadth story went.** Earlier drafts of this plan had Phase 3 as three separate web frontends (Next.js, Nuxt, Angular) to demonstrate working across frontend ecosystems. That was dropped: it doubled the surface area without adding architectural depth, and the breadth it provided is now covered differently — by the web-plus-native platform split in Phase 4 and by the backend architecture work in Phase 3. The primary positioning (Full-Stack, Node.js/TypeScript) is served better by that trade.
