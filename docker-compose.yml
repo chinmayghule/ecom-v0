@@ -21,6 +21,33 @@ services:
     depends_on:
       - postgres
 
+  # Local SMTP sink for development.
+  #
+  # The backend's DevEmailService writes password-reset URLs to stdout, which is
+  # enough to click a link by hand but not enough to inspect the rendered email.
+  # Mailpit gives the same flow a real SMTP target: set
+  #   EMAIL_TRANSPORT=smtp  (or point the mail module at it)
+  #   SMTP_HOST=localhost  SMTP_PORT=1025
+  # and every message is captured at http://localhost:8025 instead of being sent.
+  #
+  # Deliberately NOT wired into EmailModule's transport switch. That is a code
+  # change with its own design questions (which env var decides, what the
+  # default is in production); this service is here so the address exists and
+  # the capability can be adopted deliberately. Nothing about the current
+  # console flow changes.
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '8025:8025' # web UI
+      - '1025:1025' # SMTP
+    environment:
+      # Keep messages in memory only; nothing on this box needs them to survive
+      # a restart, and it avoids an anonymous volume nobody reaps.
+      MP_MAX_MESSAGES: '500'
+      MP_SMTP_AUTH_ACCEPT_ANY: '1'
+      MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+
   postgres-test:
     image: postgres:alpine
     restart: "no"

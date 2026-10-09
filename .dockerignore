@@ -1,0 +1,48 @@
+# Build context is the REPO ROOT (see the note at the top of backend/Dockerfile),
+# so this is the file Docker actually reads. backend/.dockerignore is kept
+# because it is the correct guard if anyone ever builds with backend/ as the
+# context — but in that case the build fails at `pnpm install --frozen-lockfile`
+# regardless, because backend/pnpm-lock.yaml is stale.
+
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+**/coverage
+
+# Secrets. .env is gitignored and must never enter a layer.
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Tests and their config. Nothing here ships, and the unit suite pulls in
+# vitest, which is not installed in the runner stage anyway.
+test
+**/test
+**/*.spec.ts
+**/*.e2e-spec.ts
+vitest.config.ts
+vitest.e2e.config.ts
+vitest.integration.config.ts
+
+# Local-only state (mirrors .gitignore at the root).
+.planning
+.pam
+.review
+.scribble
+.opencode
+graphify-out
+.vscode
+archive
+*.log
+
+# VCS and CI metadata — not needed to build, and the history is large.
+.git
+.github
+.gitignore
+.DS_Store
+Dockerfile
+**/Dockerfile
+.dockerignore

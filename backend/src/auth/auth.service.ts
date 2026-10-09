@@ -1,7 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import {
   BadRequestException,
   ConflictException,
@@ -27,20 +24,6 @@ import { HashService } from "./hash.service.js";
 import { ResetTokenService } from "./reset-token.service.js";
 import { SessionService } from "./session.service.js";
 import { TokenHashService } from "./token-hash.service.js";
-
-// Resolved from this module's own location rather than process.cwd(). cwd is
-// wherever the process happened to be started, which is why the production
-// migration glob (src/migrations) finds nothing once only dist/ is deployed.
-const HERE = dirname(fileURLToPath(import.meta.url));
-
-function loadTemplate(name: string, variables: Record<string, string>): string {
-  const templatePath = join(HERE, "..", "email", "templates", `${name}.html`);
-  let template = readFileSync(templatePath, "utf-8");
-  for (const [key, value] of Object.entries(variables)) {
-    template = template.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
-  }
-  return template;
-}
 
 @Injectable()
 export class AuthService {
@@ -228,15 +211,26 @@ export class AuthService {
         "FRONTEND_URL",
         "http://localhost:3000",
       );
-      const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
-      const html = loadTemplate("password-reset", {
-        RESET_URL: resetUrl,
-        EXPIRY_HOURS: "1",
-      });
-      await this.emailService.send({
+      // Derive the displayed lifetime from the configured one. The template
+      // used to be handed a hardcoded "1", which silently lied to the user
+      // whenever RESET_TOKEN_EXPIRATION_MS was set to anything else.
+      //
+      // The variable is named _MS but `.env.example` documents it as a
+      // duration string ("1h"), so `ms()` parses both forms. A value that
+      // fails to parse yields NaN, hence the Number.isFinite guard: the reset
+      // must still go out rather than 500 on an unparseable TTL.
+      const resetTtlMs = ms(
+        (this.configService.get<string>("RESET_TOKEN_EXPIRATION_MS") ??
+          "1h") as StringValue,
+      );
+      const expiresInHours = Number.isFinite(resetTtlMs)
+        ? Math.max(1, Math.round(resetTtlMs / 3_600_000))
+        : 1;
+
+      await this.emailService.sendPasswordReset({
         to: user.email,
-        subject: "Password Reset - Ecom",
-        html,
+        resetUrl: `${frontendUrl}/reset-password?token=${rawToken}`,
+        expiresInHours,
       });
     }
     return {
