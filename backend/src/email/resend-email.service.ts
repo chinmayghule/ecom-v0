@@ -16,12 +16,13 @@ export class ResendEmailService implements EmailService, OnModuleInit {
 
   onModuleInit() {
     const apiKey = this.configService.get<string>("RESEND_API_KEY") ?? "";
-    this.client = new Resend(apiKey);
     if (!apiKey) {
-      this.logger.error(
-        "RESEND_API_KEY is not set — email sending will fail in production",
+      this.logger.warn(
+        "RESEND_API_KEY is not set — ResendEmailService will not be used in dev",
       );
+      return;
     }
+    this.client = new Resend(apiKey);
   }
 
   async send(options: EmailOptions): Promise<void> {

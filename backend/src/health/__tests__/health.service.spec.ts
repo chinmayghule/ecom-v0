@@ -1,49 +1,47 @@
 import { Test } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { getDataSourceToken } from "@nestjs/typeorm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { User } from "../../entities/user.entity.js";
 import { HealthService } from "../health.service.js";
 
 describe("HealthService", () => {
   let healthService: HealthService;
-  let repo: Repository<User>;
+  let dataSource: { query: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
+    const mockQuery = vi.fn();
+    dataSource = { query: mockQuery };
+
     const module = await Test.createTestingModule({
       providers: [
         HealthService,
         {
-          provide: getRepositoryToken(User),
-          useValue: {
-            query: vi.fn(),
-          },
+          provide: getDataSourceToken(),
+          useValue: dataSource,
         },
       ],
     }).compile();
 
     healthService = module.get<HealthService>(HealthService);
-    repo = module.get<Repository<User>>(getRepositoryToken(User));
   });
 
   it("returns ok when DB is up", async () => {
-    vi.mocked(repo.query).mockResolvedValueOnce(undefined);
-    vi.mocked(repo.query).mockResolvedValueOnce([]);
+    dataSource.query.mockResolvedValueOnce(undefined);
+    dataSource.query.mockResolvedValueOnce([]);
     const result = await healthService.check();
     expect(result.status).toBe("ok");
     expect(result.database).toBe("ok");
   });
 
   it("returns degraded when DB is down", async () => {
-    vi.mocked(repo.query).mockRejectedValueOnce(new Error("DB error"));
+    dataSource.query.mockRejectedValueOnce(new Error("DB error"));
     const result = await healthService.check();
     expect(result.status).toBe("degraded");
     expect(result.database).toBe("error");
   });
 
   it("includes expected keys", async () => {
-    vi.mocked(repo.query).mockResolvedValueOnce(undefined);
-    vi.mocked(repo.query).mockResolvedValueOnce([]);
+    dataSource.query.mockResolvedValueOnce(undefined);
+    dataSource.query.mockResolvedValueOnce([]);
     const result = await healthService.check();
     expect(result).toHaveProperty("status");
     expect(result).toHaveProperty("timestamp");

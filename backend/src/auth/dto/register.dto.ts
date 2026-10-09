@@ -7,6 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from "class-validator";
+import { IsStrongPassword } from "../validators/is-strong-password.validator.js";
 
 export class RegisterDto {
   @Transform(({ value }) =>
@@ -17,6 +18,7 @@ export class RegisterDto {
   @MaxLength(255)
   email!: string;
 
+  @IsStrongPassword()
   @IsString()
   @MinLength(8)
   @MaxLength(128)

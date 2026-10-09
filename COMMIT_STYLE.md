@@ -40,7 +40,10 @@ Append `!` after the type/scope: `feat!`: `feat(auth)!: drop support for legacy 
 
 ## PR merges
 
-Squash-merge into main. The squashed commit message becomes the merge title.
+Squash-merge into **`dev`**. The squashed commit message becomes the merge title.
+
+Feature branches target `dev`; `main` is fed from `dev`. `origin/HEAD` points at
+`main`, which is not the integration branch — do not branch from it.
 
 ## Scope rule
 

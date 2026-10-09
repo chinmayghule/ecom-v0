@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { User } from "../../entities/user.entity.js";
+import { User, UserRole } from "../../entities/user.entity.js";
 import { BasePolicy } from "./base-policy.js";
 
 interface SellerProfileLike {
@@ -17,5 +17,10 @@ export class SellerProfilePolicy extends BasePolicy {
 
   canView(_user: User, _profile: SellerProfileLike): boolean {
     return true;
+  }
+
+  canCreate(user: User): boolean {
+    if (this.isAdmin(user)) return true;
+    return user.role === UserRole.SELLER;
   }
 }

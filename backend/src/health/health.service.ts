@@ -1,22 +1,19 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { User } from "../entities/user.entity.js";
+import { InjectDataSource } from "@nestjs/typeorm";
+import { DataSource } from "typeorm";
 
 @Injectable()
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
 
-  constructor(
-    @InjectRepository(User) private readonly repo: Repository<User>,
-  ) {}
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   async check() {
     let dbStatus = "ok";
     let lastMigration: string | null = null;
     try {
       await Promise.race([
-        this.repo.query("SELECT 1"),
+        this.dataSource.query("SELECT 1"),
         new Promise((_, reject) =>
           setTimeout(
             () => reject(new Error("DB health check timed out")),
@@ -24,7 +21,7 @@ export class HealthService {
           ),
         ),
       ]);
-      const migrations = await this.repo.query(
+      const migrations = await this.dataSource.query(
         "SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1",
       );
       lastMigration = migrations[0]?.name ?? null;

@@ -21,4 +21,11 @@ export class OrderPolicy extends BasePolicy {
     const ownerId = order.userId ?? order.user?.id;
     return user.id === ownerId && order.status === "pending";
   }
+
+  canCancel(user: User, order: OrderLike): boolean {
+    if (this.isAdmin(user)) return true;
+    const ownerId = order.userId ?? order.user?.id;
+    if (user.id !== ownerId) return false;
+    return order.status === "pending" || order.status === "confirmed";
+  }
 }

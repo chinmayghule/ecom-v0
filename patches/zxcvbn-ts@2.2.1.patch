@@ -1,0 +1,247 @@
+diff --git a/dist/esm/ai.js b/dist/esm/ai.js
+index 00d5d25485fdc2846582f55796ffd880a7c9d6c8..b9bcc4f63629fd116eaa2b6a75fb8f9a0b4416b5 100644
+--- a/dist/esm/ai.js
++++ b/dist/esm/ai.js
+@@ -1,4 +1,4 @@
+-import { zxcvbn } from "./main";
++import { zxcvbn } from "./main.js";
+ // Built-in Anthropic (Claude) provider.
+ export function anthropic(options = {}) {
+     return {
+diff --git a/dist/esm/feedback.js b/dist/esm/feedback.js
+index 93ab6d275fd02bda75f15b43b935023d7e810c5d..9c69865b23da3917a34c703ecc9f48ca4ce13b2d 100644
+--- a/dist/esm/feedback.js
++++ b/dist/esm/feedback.js
+@@ -1,4 +1,4 @@
+-import { START_UPPER, ALL_UPPER } from "./scoring";
++import { START_UPPER, ALL_UPPER } from "./scoring.js";
+ const DEFAULT_FEEDBACK = {
+     warning: "",
+     suggestions: ["Use a few words, avoid common phrases", "No need for symbols, digits, or uppercase letters"],
+diff --git a/dist/esm/frequency_lists.js b/dist/esm/frequency_lists.js
+index 4e9b1eecda060af35937ba597731577d6165a798..57433a2c40bc4d88cdcc251831a229dc75b30507 100644
+--- a/dist/esm/frequency_lists.js
++++ b/dist/esm/frequency_lists.js
+@@ -1,3 +1,3 @@
+-import frequencyListsJSON from "../data/frequency_lists.json";
++import frequencyListsJSON from "../data/frequency_lists.json" with { type: "json" };
+ const frequencyLists = frequencyListsJSON;
+ export default frequencyLists;
+diff --git a/dist/esm/index.js b/dist/esm/index.js
+index 6e6274f77cf75722e148fc962305dc01a0a0af8e..70741a5a96c48f4a5a5718e2e3b78480e79ca8f5 100644
+--- a/dist/esm/index.js
++++ b/dist/esm/index.js
+@@ -1,6 +1,6 @@
+-export { zxcvbn as default, zxcvbn } from "./main";
++export { zxcvbn as default, zxcvbn } from "./main.js";
+ // Lower-level helpers (useful for custom integrations / testing)
+-export { mostGuessableMatchSequence } from "./scoring";
+-export { omnimatch, dictionaryMatch, reverseDictionaryMatch, l33tMatch, spatialMatch, repeatMatch, sequenceMatch, regexMatch, dateMatch, phoneMatch, columnWalkMatch, interleavedSequenceMatch, doubledSequenceMatch, emailMatch, setUserInputDictionary, } from "./matching";
+-export { estimateAttackTimes, guessesToScore, displayTime, displayCost } from "./time_estimates";
+-export { getFeedback } from "./feedback";
++export { mostGuessableMatchSequence } from "./scoring.js";
++export { omnimatch, dictionaryMatch, reverseDictionaryMatch, l33tMatch, spatialMatch, repeatMatch, sequenceMatch, regexMatch, dateMatch, phoneMatch, columnWalkMatch, interleavedSequenceMatch, doubledSequenceMatch, emailMatch, setUserInputDictionary, } from "./matching/index.js";
++export { estimateAttackTimes, guessesToScore, displayTime, displayCost } from "./time_estimates.js";
++export { getFeedback } from "./feedback.js";
+diff --git a/dist/esm/main.js b/dist/esm/main.js
+index c0f2a7b20066ce926b26dd8cc8be6871f9fe4012..67ada8724d62d1eed3f29d4be32b04710d00ffd5 100644
+--- a/dist/esm/main.js
++++ b/dist/esm/main.js
+@@ -1,7 +1,7 @@
+-import { setUserInputDictionary, omnimatch } from "./matching";
+-import { mostGuessableMatchSequence } from "./scoring";
+-import { estimateAttackTimes } from "./time_estimates";
+-import { getFeedback } from "./feedback";
++import { setUserInputDictionary, omnimatch } from "./matching/index.js";
++import { mostGuessableMatchSequence } from "./scoring.js";
++import { estimateAttackTimes } from "./time_estimates.js";
++import { getFeedback } from "./feedback.js";
+ /**
+  * Estimate the strength of `password`.
+  *
+diff --git a/dist/esm/matching/date.js b/dist/esm/matching/date.js
+index 6d9adb3f093b8609f31c1c876e6998e7722b593a..a56694faddfee14dfefcbf9461c25194678bdb10 100644
+--- a/dist/esm/matching/date.js
++++ b/dist/esm/matching/date.js
+@@ -1,4 +1,4 @@
+-import { DATE_MAX_YEAR, DATE_MIN_YEAR, DATE_SPLITS, sorted } from "./shared";
++import { DATE_MAX_YEAR, DATE_MIN_YEAR, DATE_SPLITS, sorted } from "./shared.js";
+ export function dateMatch(password) {
+     const matches = [];
+     const maybeDateNoSep = /^\d{4,8}$/;
+diff --git a/dist/esm/matching/dictionary.js b/dist/esm/matching/dictionary.js
+index 7891743ab5258cadb0a9961bc6f04a7376cb10ac..72f502f93c67c99bf9eccfcb37901670de033ba4 100644
+--- a/dist/esm/matching/dictionary.js
++++ b/dist/esm/matching/dictionary.js
+@@ -1,4 +1,4 @@
+-import { buildRankedDict, RANKED_DICTIONARIES, sorted } from "./shared";
++import { buildRankedDict, RANKED_DICTIONARIES, sorted } from "./shared.js";
+ export function setUserInputDictionary(orderedList) {
+     RANKED_DICTIONARIES["user_inputs"] = buildRankedDict([...orderedList]);
+ }
+diff --git a/dist/esm/matching/doubledSequence.js b/dist/esm/matching/doubledSequence.js
+index e1f5dbfd46afdec9e41855bb4b684d91e3ea57e4..53685c79f8fe2e064894b9e6a00c3889473ba4e6 100644
+--- a/dist/esm/matching/doubledSequence.js
++++ b/dist/esm/matching/doubledSequence.js
+@@ -1,4 +1,4 @@
+-import { sorted } from "./shared";
++import { sorted } from "./shared.js";
+ export function doubledSequenceMatch(password) {
+     const matches = [];
+     if (password.length < 4)
+diff --git a/dist/esm/matching/email.js b/dist/esm/matching/email.js
+index 7d079b87fafe3ef14c554652d8184f8ad76a3e90..54c959273897afd37611756f922d7c7c65e3644c 100644
+--- a/dist/esm/matching/email.js
++++ b/dist/esm/matching/email.js
+@@ -1,4 +1,4 @@
+-import { sorted } from "./shared";
++import { sorted } from "./shared.js";
+ const EMAIL_PATTERN = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
+ export function emailMatch(password) {
+     const matches = [];
+diff --git a/dist/esm/matching/index.js b/dist/esm/matching/index.js
+index 09db31ce7a45e6865afa86a54df6c61de18a305f..b0df17ea76560aef9ebe1bfc8cf812fe959a3883 100644
+--- a/dist/esm/matching/index.js
++++ b/dist/esm/matching/index.js
+@@ -1,28 +1,28 @@
+-import { columnWalkMatch } from "./columnWalk";
+-import { dateMatch } from "./date";
+-import { dictionaryMatch, reverseDictionaryMatch } from "./dictionary";
+-import { doubledSequenceMatch } from "./doubledSequence";
+-import { emailMatch } from "./email";
+-import { interleavedSequenceMatch } from "./interleaved";
+-import { l33tMatch } from "./l33t";
+-import { phoneMatch } from "./phone";
+-import { regexMatch } from "./regex";
+-import { repeatMatch } from "./repeat";
+-import { sequenceMatch } from "./sequence";
+-import { sorted } from "./shared";
+-import { spatialMatch } from "./spatial";
+-export { dictionaryMatch, reverseDictionaryMatch, setUserInputDictionary } from "./dictionary";
+-export { l33tMatch } from "./l33t";
+-export { spatialMatch } from "./spatial";
+-export { repeatMatch } from "./repeat";
+-export { sequenceMatch } from "./sequence";
+-export { regexMatch } from "./regex";
+-export { dateMatch } from "./date";
+-export { phoneMatch } from "./phone";
+-export { emailMatch } from "./email";
+-export { columnWalkMatch } from "./columnWalk";
+-export { interleavedSequenceMatch } from "./interleaved";
+-export { doubledSequenceMatch } from "./doubledSequence";
++import { columnWalkMatch } from "./columnWalk.js";
++import { dateMatch } from "./date.js";
++import { dictionaryMatch, reverseDictionaryMatch } from "./dictionary.js";
++import { doubledSequenceMatch } from "./doubledSequence.js";
++import { emailMatch } from "./email.js";
++import { interleavedSequenceMatch } from "./interleaved.js";
++import { l33tMatch } from "./l33t.js";
++import { phoneMatch } from "./phone.js";
++import { regexMatch } from "./regex.js";
++import { repeatMatch } from "./repeat.js";
++import { sequenceMatch } from "./sequence.js";
++import { sorted } from "./shared.js";
++import { spatialMatch } from "./spatial.js";
++export { dictionaryMatch, reverseDictionaryMatch, setUserInputDictionary } from "./dictionary.js";
++export { l33tMatch } from "./l33t.js";
++export { spatialMatch } from "./spatial.js";
++export { repeatMatch } from "./repeat.js";
++export { sequenceMatch } from "./sequence.js";
++export { regexMatch } from "./regex.js";
++export { dateMatch } from "./date.js";
++export { phoneMatch } from "./phone.js";
++export { emailMatch } from "./email.js";
++export { columnWalkMatch } from "./columnWalk.js";
++export { interleavedSequenceMatch } from "./interleaved.js";
++export { doubledSequenceMatch } from "./doubledSequence.js";
+ export function omnimatch(password) {
+     const matches = [];
+     const matchers = [
+diff --git a/dist/esm/matching/interleaved.js b/dist/esm/matching/interleaved.js
+index 9ba43a1a99a3f187d8cf8aed9219c7f365417d85..61c2df911bbd050cd780b309c5c7ab70e9e211bf 100644
+--- a/dist/esm/matching/interleaved.js
++++ b/dist/esm/matching/interleaved.js
+@@ -1,4 +1,4 @@
+-import { sorted } from "./shared";
++import { sorted } from "./shared.js";
+ export function interleavedSequenceMatch(password) {
+     const matches = [];
+     if (password.length < 4) {
+diff --git a/dist/esm/matching/l33t.js b/dist/esm/matching/l33t.js
+index b54dfe32340e87944a82e2bbbef655c61ac10163..c15faa5513d686920d9fe7acb8c1a82f3e7d05dc 100644
+--- a/dist/esm/matching/l33t.js
++++ b/dist/esm/matching/l33t.js
+@@ -1,5 +1,5 @@
+-import { dictionaryMatch } from "../matching";
+-import { isEmpty, L33T_TABLE, RANKED_DICTIONARIES, sorted, translate } from "./shared";
++import { dictionaryMatch } from "../matching/index.js";
++import { isEmpty, L33T_TABLE, RANKED_DICTIONARIES, sorted, translate } from "./shared.js";
+ function relevantL33tSubtable(password, table) {
+     const passwordChars = new Set(password.split(""));
+     const subtable = {};
+diff --git a/dist/esm/matching/phone.js b/dist/esm/matching/phone.js
+index fb634fbe11034705d4dd7a4c6c56dcc8b288bcfd..deac4479cc254433b3fec8d72cae2a3e3486c9fd 100644
+--- a/dist/esm/matching/phone.js
++++ b/dist/esm/matching/phone.js
+@@ -1,4 +1,4 @@
+-import { sorted } from "./shared";
++import { sorted } from "./shared.js";
+ const PHONE_PATTERNS = [
+     {
+         name: "nanp",
+diff --git a/dist/esm/matching/regex.js b/dist/esm/matching/regex.js
+index cb282d4996de7ff233bbf7bdcb935b54ef0b4c89..5f941bebea2fa64354a17fcfada65310b8c969f6 100644
+--- a/dist/esm/matching/regex.js
++++ b/dist/esm/matching/regex.js
+@@ -1,4 +1,4 @@
+-import { REGEXES, sorted } from "./shared";
++import { REGEXES, sorted } from "./shared.js";
+ export function regexMatch(password, regexes = REGEXES) {
+     const matches = [];
+     for (const [name, rx] of Object.entries(regexes)) {
+diff --git a/dist/esm/matching/repeat.js b/dist/esm/matching/repeat.js
+index 3bd115a551f68ada64502358838713402eb5019e..d153f9fbf57b96d01ca0fc3286a21af7383549de 100644
+--- a/dist/esm/matching/repeat.js
++++ b/dist/esm/matching/repeat.js
+@@ -1,5 +1,5 @@
+-import { omnimatch } from ".";
+-import { mostGuessableMatchSequence } from "../scoring";
++import { omnimatch } from "./index.js";
++import { mostGuessableMatchSequence } from "../scoring.js";
+ export function repeatMatch(password) {
+     const matches = [];
+     const charSet = new Set(password);
+diff --git a/dist/esm/matching/shared.js b/dist/esm/matching/shared.js
+index b51e0a3c08fd4597b667cb4e28d3376ecc9ec6ce..8fb5c1a8126e670f381f92a5f44ab7efdf6bbf59 100644
+--- a/dist/esm/matching/shared.js
++++ b/dist/esm/matching/shared.js
+@@ -1,5 +1,5 @@
+-import adjacencyGraphs from "../adjacency_graphs";
+-import frequencyLists from "../frequency_lists";
++import adjacencyGraphs from "../adjacency_graphs.js";
++import frequencyLists from "../frequency_lists.js";
+ export function buildRankedDict(orderedList) {
+     const result = {};
+     for (let i = 0; i < orderedList.length; i++) {
+diff --git a/dist/esm/matching/spatial.js b/dist/esm/matching/spatial.js
+index 70207728b9b1eecf06d39349954cdedafeee6fe7..e5b40a376bed1ad140488fbb4f7843fa05b07311 100644
+--- a/dist/esm/matching/spatial.js
++++ b/dist/esm/matching/spatial.js
+@@ -1,5 +1,5 @@
+-import adjacencyGraphs from "../adjacency_graphs";
+-import { extend, sorted } from "./shared";
++import adjacencyGraphs from "../adjacency_graphs.js";
++import { extend, sorted } from "./shared.js";
+ const SHIFTED_RX = /[~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:"ZXCVBNM<>?]/;
+ function spatialMatchHelper(password, graph, graphName) {
+     const matches = [];
+diff --git a/dist/esm/scoring.js b/dist/esm/scoring.js
+index 1a71f3cffbc0e96ee0c004223d8c8fb57b8a7fab..044bce38c1fd848468fb49598df1e6fc7b52e1a2 100644
+--- a/dist/esm/scoring.js
++++ b/dist/esm/scoring.js
+@@ -1,4 +1,4 @@
+-import adjacencyGraphs from "./adjacency_graphs";
++import adjacencyGraphs from "./adjacency_graphs.js";
+ // ----------------------------------------------------------------
+ // Constants
+ // ----------------------------------------------------------------

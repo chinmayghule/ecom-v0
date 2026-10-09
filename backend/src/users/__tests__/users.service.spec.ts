@@ -52,8 +52,7 @@ describe("UsersService", () => {
       const result = await service.findByEmail("test@example.com");
 
       expect(repo.findOne).toHaveBeenCalledWith({
-        where: { email: "test@example.com" },
-        withDeleted: true,
+        where: { email: "test@example.com", deletedAt: expect.any(Object) },
       });
       expect(result).toEqual(user);
     });
@@ -66,16 +65,20 @@ describe("UsersService", () => {
       expect(result).toBeNull();
     });
 
-    it("includes soft-deleted users in search", async () => {
-      const deletedUser = mockUser({ deletedAt: new Date() });
-      vi.mocked(repo.findOne).mockResolvedValue(deletedUser);
+    it("excludes soft-deleted users", async () => {
+      vi.mocked(repo.findOne).mockResolvedValue(null);
 
       const result = await service.findByEmail("deleted@example.com");
 
       expect(repo.findOne).toHaveBeenCalledWith(
-        expect.objectContaining({ withDeleted: true }),
+        expect.objectContaining({
+          where: {
+            email: "deleted@example.com",
+            deletedAt: expect.any(Object),
+          },
+        }),
       );
-      expect(result).toEqual(deletedUser);
+      expect(result).toBeNull();
     });
   });
 
@@ -87,8 +90,7 @@ describe("UsersService", () => {
       const result = await service.findById("user-1");
 
       expect(repo.findOne).toHaveBeenCalledWith({
-        where: { id: "user-1" },
-        withDeleted: true,
+        where: { id: "user-1", deletedAt: expect.any(Object) },
       });
       expect(result).toEqual(user);
     });
@@ -168,8 +170,7 @@ describe("UsersService", () => {
       const result = await service.update("user-1", { name: "Updated" });
 
       expect(repo.findOne).toHaveBeenCalledWith({
-        where: { id: "user-1" },
-        withDeleted: true,
+        where: { id: "user-1", deletedAt: expect.any(Object) },
       });
       expect(repo.save).toHaveBeenCalledWith(
         expect.objectContaining({ name: "Updated" }),

@@ -33,6 +33,13 @@ describe("ResetTokenService", () => {
           useValue: {
             create: vi.fn(),
             save: vi.fn(),
+            createQueryBuilder: vi.fn().mockReturnValue({
+              update: vi.fn().mockReturnThis(),
+              set: vi.fn().mockReturnThis(),
+              where: vi.fn().mockReturnThis(),
+              andWhere: vi.fn().mockReturnThis(),
+              execute: vi.fn().mockResolvedValue({ affected: 1 }),
+            }),
             findOne: vi.fn(),
             update: vi.fn(),
           },
@@ -73,7 +80,7 @@ describe("ResetTokenService", () => {
       expect(result.rawToken.length).toBe(64);
       expect(repo.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: "user-1",
+          user: { id: "user-1" },
           expiresAt: expect.any(Date),
         }),
       );
@@ -110,6 +117,7 @@ describe("ResetTokenService", () => {
           usedAt: expect.any(Object),
           expiresAt: expect.any(Object),
         },
+        relations: { user: true },
       });
     });
 
