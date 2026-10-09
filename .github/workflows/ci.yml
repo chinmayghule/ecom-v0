@@ -61,6 +61,13 @@ jobs:
       # not have found it — and no developer runs migrations from scratch until
       # onboarding, so it surfaced on someone else's machine instead.
       #
+      # The service container only creates POSTGRES_DB (ecom_test), so the
+      # throwaway database has to be made explicitly.
+      - name: Create throwaway migration database
+        run: |
+          PGPASSWORD=test psql -h localhost -U test -d ecom_test \
+            -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ecom_migtest;'
+
       # `ecom_migtest` is a name nothing else references, so it is empty by
       # construction: no cleanup step, no leak from a previous run.
       - name: Verify migrations apply to an empty database
