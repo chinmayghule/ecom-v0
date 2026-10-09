@@ -24,7 +24,11 @@
     "typeorm": "node --no-experimental-strip-types --loader ts-node/esm -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "migration:generate": "node --no-experimental-strip-types --loader ts-node/esm -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d src/data-source.ts",
     "migration:run": "node --no-experimental-strip-types --loader ts-node/esm -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d src/data-source.ts",
-    "migration:revert": "node --no-experimental-strip-types --loader ts-node/esm -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/data-source.ts"
+    "migration:revert": "node --no-experimental-strip-types --loader ts-node/esm -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d src/data-source.ts",
+    "test:integration": "vitest run --config ./vitest.integration.config.ts",
+    "pretest:integration": "docker compose -f ../docker-compose.yml --profile test up -d --wait postgres-test",
+    "posttest:integration": "docker compose -f ../docker-compose.yml --profile test down postgres-test",
+    "test:integration:ci": "vitest run --config ./vitest.integration.config.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -41,6 +45,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "helmet": "^8.1.0",
+    "ms": "^2.1.3",
     "nestjs-pino": "^4.6.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -60,6 +65,7 @@
     "@swc/core": "^1.15.33",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
+    "@types/ms": "^2.1.0",
     "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",

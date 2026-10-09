@@ -15,7 +15,17 @@ export default defineConfig({
     globals: true, // no need to import describe/it/expect
     environment: "node",
     include: ["src/**/*.spec.ts"],
-    // exclude e2e tests, they use a separate script
+    // Integration specs require a live PostgreSQL and run in their own project
+    // (`test:integration`). They match the include glob above, so they must be
+    // excluded here — otherwise `pnpm test` tries to connect to a database that
+    // is not running and every unit run fails at import.
+    exclude: [
+      "src/integration/**",
+      "node_modules/**",
+      "dist/**",
+      "**/*.e2e-spec.ts",
+      "**/*.integration.spec.ts",
+    ],
     coverage: {
       provider: "v8",
       thresholds: {

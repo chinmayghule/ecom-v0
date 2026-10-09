@@ -1,7 +1,7 @@
 import type { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateAllTables1780482709590 implements MigrationInterface {
-  name = "CreateAllTables1780482709590";
+export class InitialSchema1791544704010 implements MigrationInterface {
+  name = "InitialSchema1791544704010";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -11,7 +11,16 @@ export class CreateAllTables1780482709590 implements MigrationInterface {
       `CREATE TABLE "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "email" character varying NOT NULL, "passwordHash" character varying NOT NULL, "role" "public"."users_role_enum" NOT NULL DEFAULT 'customer', "name" character varying NOT NULL, "contactNumber" character varying, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "sessions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "refreshToken" character varying NOT NULL, "expiresAt" TIMESTAMP NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "userId" uuid, CONSTRAINT "PK_3238ef96f18b355b671619111bc" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "sessions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "refreshToken" character varying NOT NULL, "expiresAt" TIMESTAMP NOT NULL, "userAgent" character varying, "ipAddress" character varying, "deviceInfo" jsonb, "lastActiveAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "userId" uuid, CONSTRAINT "PK_3238ef96f18b355b671619111bc" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE TABLE "login_attempts" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "identifier" character varying(64) NOT NULL, "failedAttempts" integer NOT NULL DEFAULT '0', "lockedUntil" TIMESTAMP WITH TIME ZONE, "lastAttemptAt" TIMESTAMP WITH TIME ZONE NOT NULL, "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "userId" uuid, CONSTRAINT "PK_070e613c8f768b1a70742705c5b" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_c2b446ddee54bbf8f679dafd80" ON "login_attempts" ("userId") `,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX "IDX_login_attempts_identifier" ON "login_attempts" ("identifier") `,
     );
     await queryRunner.query(
       `CREATE TABLE "categories" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying NOT NULL, "description" text, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "deletedAt" TIMESTAMP, CONSTRAINT "UQ_8b0be371d28245da6e4f4b61878" UNIQUE ("name"), CONSTRAINT "PK_24dbc6126a28ff948da33e97d3b" PRIMARY KEY ("id"))`,
@@ -44,7 +53,19 @@ export class CreateAllTables1780482709590 implements MigrationInterface {
       `CREATE TABLE "order_items" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "productName" character varying NOT NULL, "category" character varying, "quantity" integer NOT NULL, "unitPrice" numeric(10,2) NOT NULL, "totalPrice" numeric(10,2) NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "orderId" uuid, "productId" uuid, CONSTRAINT "PK_005269d8574e6fac0493715c308" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
+      `CREATE TABLE "reset_tokens" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "token" character varying NOT NULL, "expiresAt" TIMESTAMP NOT NULL, "usedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "userId" uuid NOT NULL, CONSTRAINT "PK_acd6ec48b54150b1736d0b454b9" PRIMARY KEY ("id"))`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_69015e2482e433b6d218ad0faf" ON "reset_tokens" ("userId") `,
+    );
+    await queryRunner.query(
+      `CREATE INDEX "IDX_d9fb418d3a96c3ea9d61978335" ON "reset_tokens" ("token") `,
+    );
+    await queryRunner.query(
       `ALTER TABLE "sessions" ADD CONSTRAINT "FK_57de40bc620f456c7311aa3a1e6" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "login_attempts" ADD CONSTRAINT "FK_c2b446ddee54bbf8f679dafd80a" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
       `ALTER TABLE "products" ADD CONSTRAINT "FK_e40a1dd2909378f0da1f34f7bd6" FOREIGN KEY ("sellerId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
@@ -85,9 +106,15 @@ export class CreateAllTables1780482709590 implements MigrationInterface {
     await queryRunner.query(
       `ALTER TABLE "order_items" ADD CONSTRAINT "FK_cdb99c05982d5191ac8465ac010" FOREIGN KEY ("productId") REFERENCES "products"("id") ON DELETE SET NULL ON UPDATE NO ACTION`,
     );
+    await queryRunner.query(
+      `ALTER TABLE "reset_tokens" ADD CONSTRAINT "FK_69015e2482e433b6d218ad0faf6" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "reset_tokens" DROP CONSTRAINT "FK_69015e2482e433b6d218ad0faf6"`,
+    );
     await queryRunner.query(
       `ALTER TABLE "order_items" DROP CONSTRAINT "FK_cdb99c05982d5191ac8465ac010"`,
     );
@@ -128,8 +155,18 @@ export class CreateAllTables1780482709590 implements MigrationInterface {
       `ALTER TABLE "products" DROP CONSTRAINT "FK_e40a1dd2909378f0da1f34f7bd6"`,
     );
     await queryRunner.query(
+      `ALTER TABLE "login_attempts" DROP CONSTRAINT "FK_c2b446ddee54bbf8f679dafd80a"`,
+    );
+    await queryRunner.query(
       `ALTER TABLE "sessions" DROP CONSTRAINT "FK_57de40bc620f456c7311aa3a1e6"`,
     );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_d9fb418d3a96c3ea9d61978335"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_69015e2482e433b6d218ad0faf"`,
+    );
+    await queryRunner.query(`DROP TABLE "reset_tokens"`);
     await queryRunner.query(`DROP TABLE "order_items"`);
     await queryRunner.query(`DROP TABLE "orders"`);
     await queryRunner.query(`DROP TYPE "public"."orders_status_enum"`);
@@ -140,6 +177,13 @@ export class CreateAllTables1780482709590 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE "inventory"`);
     await queryRunner.query(`DROP TABLE "products"`);
     await queryRunner.query(`DROP TABLE "categories"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_login_attempts_identifier"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX "public"."IDX_c2b446ddee54bbf8f679dafd80"`,
+    );
+    await queryRunner.query(`DROP TABLE "login_attempts"`);
     await queryRunner.query(`DROP TABLE "sessions"`);
     await queryRunner.query(`DROP TABLE "users"`);
     await queryRunner.query(`DROP TYPE "public"."users_role_enum"`);

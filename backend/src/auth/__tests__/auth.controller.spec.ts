@@ -1,14 +1,12 @@
-import { NotFoundException } from "@nestjs/common";
+import { NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test } from "@nestjs/testing";
 import type { Request, Response } from "express";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { User, UserRole } from "../../entities/user.entity.js";
-import { UsersService } from "../../users/users.service.js";
 import { AuthController } from "../auth.controller.js";
 import { AuthService } from "../auth.service.js";
-import { BruteForceService } from "../brute-force.service.js";
 import { SessionService } from "../session.service.js";
 
 const mockUser = (overrides: Partial<User> = {}): User =>
@@ -28,7 +26,6 @@ const mockUser = (overrides: Partial<User> = {}): User =>
 describe("AuthController", () => {
   let controller: AuthController;
   let authService: AuthService;
-  let usersService: UsersService;
 
   const mockRes = (): Partial<Response> => ({
     cookie: vi.fn().mockReturnThis(),
@@ -65,6 +62,7 @@ describe("AuthController", () => {
               refreshToken: "new-refresh",
             }),
             logout: vi.fn().mockResolvedValue(undefined),
+            getProfile: vi.fn(),
             forgotPassword: vi.fn().mockResolvedValue({
               message:
                 "If that email is registered, a password reset link has been sent.",
@@ -75,27 +73,13 @@ describe("AuthController", () => {
           },
         },
         {
-          provide: BruteForceService,
-          useValue: {
-            isLocked: vi.fn().mockResolvedValue(false),
-            recordFailedAttempt: vi.fn().mockResolvedValue(undefined),
-            resetAttempts: vi.fn().mockResolvedValue(undefined),
-          },
-        },
-        {
           provide: SessionService,
           useValue: {
             findByUserId: vi.fn().mockResolvedValue([]),
             revokeSession: vi.fn().mockResolvedValue(undefined),
             revokeAllSessions: vi.fn().mockResolvedValue(undefined),
             validateRefreshToken: vi.fn().mockResolvedValue(null),
-          },
-        },
-        {
-          provide: UsersService,
-          useValue: {
-            findByEmail: vi.fn(),
-            findById: vi.fn(),
+            peekSessionId: vi.fn().mockResolvedValue(null),
           },
         },
         {
@@ -107,7 +91,7 @@ describe("AuthController", () => {
         {
           provide: ConfigService,
           useValue: {
-            get: vi.fn(),
+            get: vi.fn().mockImplementation((_k: string, d?: string) => d),
             getOrThrow: vi.fn(),
           },
         },
@@ -116,7 +100,6 @@ describe("AuthController", () => {
 
     controller = module.get(AuthController);
     authService = module.get(AuthService);
-    usersService = module.get(UsersService);
   });
 
   describe("POST /auth/register", () => {
@@ -145,9 +128,6 @@ describe("AuthController", () => {
       const res = mockRes();
       const req = mockReq();
       const dto = { email: "test@example.com", password: "password" };
-      const user = mockUser({ id: "user-1", role: UserRole.CUSTOMER });
-      vi.mocked(usersService.findByEmail).mockResolvedValue(user);
-      vi.mocked(authService.validateUser).mockResolvedValue(user);
 
       const result = await controller.login(
         dto,
@@ -155,8 +135,12 @@ describe("AuthController", () => {
         res as Response,
       );
 
+      // Policy (lockout, attempt recording, constant-cost verification) lives in
+      // AuthService. The controller must not re-implement any of it — that is
+      // how the per-account lock ended up skipped for unknown addresses.
       expect(authService.login).toHaveBeenCalledWith(
-        user,
+        dto.email,
+        dto.password,
         req.headers["user-agent"],
         req.ip,
       );
@@ -168,25 +152,27 @@ describe("AuthController", () => {
       expect(result).toEqual({ accessToken: "mock-access" });
     });
 
-    it("checks brute force before validating credentials", async () => {
+    it("propagates a rejected login without setting a cookie", async () => {
       const res = mockRes();
       const req = mockReq();
       const dto = { email: "test@example.com", password: "wrong" };
-      const user = mockUser({ id: "user-1" });
-      vi.mocked(usersService.findByEmail).mockResolvedValue(user);
 
-      vi.mocked(authService.validateUser).mockResolvedValue(null);
+      vi.mocked(authService.login).mockRejectedValue(
+        new UnauthorizedException("Invalid credentials"),
+      );
 
       await expect(
         controller.login(dto, req as Request, res as Response),
       ).rejects.toThrow("Invalid credentials");
+
+      expect(res.cookie).not.toHaveBeenCalled();
     });
   });
 
   describe("POST /auth/refresh", () => {
     it("delegates to authService.refreshAccessToken and sets new cookie", async () => {
       const res = mockRes();
-      const user = { id: "user-1", sessionId: "session-1" };
+      const user = { id: "user-1", refreshToken: "rt-1" };
       const req = mockReq({
         headers: { "user-agent": "Mozilla" },
         ip: "1.2.3.4",
@@ -198,9 +184,11 @@ describe("AuthController", () => {
         res as Response,
       );
 
+      // The raw token, not a session id: the service spends it atomically by
+      // hash, because a replayed token has no row left to read an id from.
       expect(authService.refreshAccessToken).toHaveBeenCalledWith(
         "user-1",
-        "session-1",
+        "rt-1",
         "Mozilla",
         "1.2.3.4",
       );
@@ -230,30 +218,65 @@ describe("AuthController", () => {
         "refreshToken",
         expect.any(Object),
       );
-      expect(result).toEqual({ message: "Logged out successfully" });
+      // 204 No Content. Logging out is a client-state outcome, not a payload.
+      expect(result).toBeUndefined();
+    });
+
+    it("clears the cookie even when revoking the session fails", async () => {
+      const res = mockRes();
+      const req = mockReq({ cookies: { refreshToken: "rt-stale" } });
+      vi.mocked(authService.logout).mockRejectedValue(new Error("boom"));
+
+      await expect(
+        controller.logout({ id: "user-1" }, req as Request, res as Response),
+      ).rejects.toThrow("boom");
+
+      // Clearing happens BEFORE the service call precisely so this is true.
+      // Clearing afterwards meant a failure left the client holding a cookie it
+      // could never remove, and every subsequent logout 401'd.
+      expect(res.clearCookie).toHaveBeenCalled();
+    });
+
+    it("still clears the cookie when no token is present", async () => {
+      const res = mockRes();
+      const req = mockReq({ cookies: {} });
+
+      await controller.logout(
+        { id: "user-1" },
+        req as Request,
+        res as Response,
+      );
+
+      expect(res.clearCookie).toHaveBeenCalled();
+      expect(authService.logout).not.toHaveBeenCalled();
     });
   });
 
   describe("GET /auth/me", () => {
     it("returns user profile without passwordHash", async () => {
-      const user = mockUser({
+      const _user = mockUser({
         id: "user-1",
         email: "test@example.com",
         passwordHash: "secret",
         name: "Test",
         role: UserRole.CUSTOMER,
       });
-      vi.mocked(usersService.findById).mockResolvedValue(user);
+      vi.mocked(authService.getProfile).mockResolvedValue({
+        id: "user-1",
+        email: "test@example.com",
+        name: "Test",
+        role: UserRole.CUSTOMER,
+      } as never);
 
       const result = await controller.getProfile({ id: "user-1" });
 
-      expect(usersService.findById).toHaveBeenCalledWith("user-1");
+      expect(authService.getProfile).toHaveBeenCalledWith("user-1");
       expect(result).not.toHaveProperty("passwordHash");
       expect(result).toHaveProperty("email", "test@example.com");
     });
 
     it("throws NotFoundException when user not found", async () => {
-      vi.mocked(usersService.findById).mockResolvedValue(null);
+      vi.mocked(authService.getProfile).mockResolvedValue(null);
 
       await expect(
         controller.getProfile({ id: "nonexistent" }),

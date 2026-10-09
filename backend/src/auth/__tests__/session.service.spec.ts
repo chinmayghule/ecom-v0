@@ -48,7 +48,13 @@ describe("SessionService", () => {
             find: vi.fn(),
             findOne: vi.fn(),
             findOneBy: vi.fn(),
-            delete: vi.fn(),
+            delete: vi.fn().mockReturnThis(),
+            createQueryBuilder: vi.fn().mockReturnThis(),
+            from: vi.fn().mockReturnThis(),
+            where: vi.fn().mockReturnThis(),
+            andWhere: vi.fn().mockReturnThis(),
+            returning: vi.fn().mockReturnThis(),
+            execute: vi.fn(),
             update: vi.fn(),
             remove: vi.fn(),
           },
@@ -187,25 +193,54 @@ describe("SessionService", () => {
     });
   });
 
-  describe("consumeSession", () => {
-    it("deletes session and returns true when found", async () => {
-      vi.mocked(repo.delete).mockResolvedValue({ affected: 1, raw: {} });
+  describe("consumeSessionByTokenHash", () => {
+    it("returns the deleted row when the token was unspent", async () => {
+      vi.mocked(repo.execute).mockResolvedValue({
+        affected: 1,
+        raw: [{ id: "session-1", userId: "user-1" }],
+      } as never);
 
-      const result = await service.consumeSession("session-1", "user-1");
+      const result = await service.consumeSessionByTokenHash(
+        "hashed-token",
+        "user-1",
+      );
 
-      expect(repo.delete).toHaveBeenCalledWith({
-        id: "session-1",
-        user: { id: "user-1" },
-      });
-      expect(result).toBe(true);
+      expect(result).not.toBeNull();
+      expect(result?.id).toBe("session-1");
     });
 
-    it("returns false when session already consumed", async () => {
-      vi.mocked(repo.delete).mockResolvedValue({ affected: 0, raw: {} });
+    it("returns null when the token has already been spent", async () => {
+      // This is the replay path. The rotation that consumed the token deleted
+      // its row, so a second use finds nothing — which is exactly the signal
+      // that the token was copied.
+      vi.mocked(repo.execute).mockResolvedValue({
+        affected: 0,
+        raw: [],
+      } as never);
 
-      const result = await service.consumeSession("session-1", "user-1");
+      await expect(
+        service.consumeSessionByTokenHash("hashed-token", "user-1"),
+      ).resolves.toBeNull();
+    });
 
-      expect(result).toBe(false);
+    it("scopes the delete to the token and the owning user", async () => {
+      vi.mocked(repo.execute).mockResolvedValue({
+        affected: 0,
+        raw: [],
+      } as never);
+
+      await service.consumeSessionByTokenHash("hashed-token", "user-1");
+
+      // Keyed on the hash, not a caller-supplied session id: a replayed token
+      // has no row left to read an id from, so the hash is the only stable
+      // handle. Scoping to userId stops one account's token consuming another's
+      // session.
+      expect(repo.where).toHaveBeenCalledWith('"refreshToken" = :tokenHash', {
+        tokenHash: "hashed-token",
+      });
+      expect(repo.andWhere).toHaveBeenCalledWith('"userId" = :userId', {
+        userId: "user-1",
+      });
     });
   });
 

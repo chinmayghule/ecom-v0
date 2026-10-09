@@ -24,9 +24,10 @@ Run all commands from the package directory (`backend/`, `frontend/`, etc.), not
 | `pnpm test` | Vitest unit tests (`src/**/*.spec.ts`) |
 | `pnpm test:e2e` | E2E tests (`./vitest.e2e.config.ts`) |
 | `pnpm test:cov` | Coverage report |
-| `pnpm migration:generate -- -d src/data-source.ts src/migrations/<name>` | Generate migration |
+| `pnpm migration:generate src/migrations/<Name>` | Generate migration (no `--`; pnpm forwards it literally and TypeORM then sees zero path arguments) |
 | `pnpm migration:run` | Apply pending |
 | `pnpm migration:revert` | Revert last |
+| `pnpm test:integration` | Tests that need a real Postgres (boots it on 5433) |
 | `pnpm lint` | Biome check `./src` |
 | `pnpm build` | `nest build` |
 
@@ -50,8 +51,22 @@ Run all commands from the package directory (`backend/`, `frontend/`, etc.), not
 
 ### Schema change workflow
 
-1. Create/update entity → `pnpm migration:generate` → `pnpm migration:run`
+1. Create/update entity → `pnpm migration:generate src/migrations/<Name>` → `pnpm migration:run`
 2. Rollback: `pnpm migration:revert`
+
+**A migration is immutable once it has run on any shared database.** Editing a
+shipped migration is how duplicate-constraint and half-applied-schema bugs
+appear. Before approving one, check it applies to an *empty* database — CI does
+this on every PR against a database nothing else references.
+
+**Name migrations for the change, not the timestamp.** `1791544704010-InitialSchema.ts`
+is fine; a robotic generated name is not. The timestamp prefix is required for
+ordering, the rest is yours.
+
+**Anything whose correctness depends on SQL semantics — atomicity, `ON CONFLICT`,
+foreign keys, cascade behaviour — needs an integration test in `src/integration/`.
+A unit test with a mocked repository cannot observe any of it, and will pass
+while the query is wrong.
 
 ### CI quirk
 

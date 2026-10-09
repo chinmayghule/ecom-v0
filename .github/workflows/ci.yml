@@ -43,8 +43,38 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install
-      - run: pnpm biome check --no-errors-on-unmatched backend/src backend/test frontend shared biome.json lefthook.yml
+
+      - name: Lint
+        run: pnpm biome check --no-errors-on-unmatched backend/src backend/test frontend shared biome.json lefthook.yml .github
+
       - run: pnpm --filter backend build
+
+      # The migration guardrail.
+      #
+      # Applies every migration to a database nothing has ever written to, then
+      # reverts and re-applies. This is the only check that exercises the actual
+      # SQL, and it exists because a real blocker shipped green: two migrations
+      # added the same-named foreign key to reset_tokens, so `migration:run`
+      # failed on any empty database with
+      #   constraint "FK_69015e..." for relation "reset_tokens" already exists
+      # Unit tests mock every repository, so they never touch a schema and could
+      # not have found it — and no developer runs migrations from scratch until
+      # onboarding, so it surfaced on someone else's machine instead.
+      #
+      # `ecom_migtest` is a name nothing else references, so it is empty by
+      # construction: no cleanup step, no leak from a previous run.
+      - name: Verify migrations apply to an empty database
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: test
+          DATABASE_PASSWORD: test
+          DATABASE_NAME: ecom_migtest
+        run: |
+          pnpm --filter backend migration:run
+          pnpm --filter backend migration:revert
+          pnpm --filter backend migration:run
+
       - run: pnpm --filter backend test:cov
         env:
           DATABASE_HOST: localhost
@@ -53,3 +83,23 @@ jobs:
           DATABASE_PASSWORD: test
           DATABASE_NAME: ecom_test
 
+      # Integration tests — the first CI step that executes real SQL against the
+      # Postgres service above.
+      #
+      # Everything above mocks its repositories, so a unit suite of 180+ tests
+      # can be green while the queries themselves are wrong. That is exactly how
+      # a migration that could not apply to an empty database, and a lockout
+      # counter that never incremented under parallel load, both reached a
+      # review with a passing check. These specs use the same container, so they
+      # cost seconds and no external service — CI never touches Neon.
+      #
+      # `migrationsRun: true` in the test bootstrap applies the real schema, so
+      # this also fails if the migration chain cannot build it.
+      - name: Integration tests
+        run: pnpm --filter backend test:integration:ci
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: test
+          DATABASE_PASSWORD: test
+          DATABASE_NAME: ecom_test
