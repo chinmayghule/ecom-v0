@@ -21,9 +21,17 @@ export class EmailModule {
             resend: ResendEmailService,
             dev: DevEmailService,
           ) => {
-            return configService.get<string>("NODE_ENV") === "production"
-              ? resend
-              : dev;
+            const isProduction =
+              configService.get<string>("NODE_ENV") === "production";
+            // Selecting Resend without an API key produced a service with no
+            // client, which failed at the first send rather than at startup.
+            // Fall back to the console transport in that case and let
+            // ResendEmailService's own onModuleInit throw, so the deploy
+            // refuses to start instead of 500ing later.
+            if (isProduction && !configService.get<string>("RESEND_API_KEY")) {
+              return dev;
+            }
+            return isProduction ? resend : dev;
           },
           inject: [ConfigService, ResendEmailService, DevEmailService],
         },

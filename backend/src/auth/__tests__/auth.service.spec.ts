@@ -162,6 +162,7 @@ describe("AuthService", () => {
           provide: EMAIL_SERVICE,
           useValue: {
             send: vi.fn().mockResolvedValue(undefined),
+            sendPasswordReset: vi.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -460,7 +461,14 @@ describe("AuthService", () => {
       const result = await authService.forgotPassword("test@example.com");
 
       expect(resetTokenService.create).toHaveBeenCalledWith("user-1");
-      expect(emailService.send).toHaveBeenCalled();
+      // Asserted on sendPasswordReset, not `send`: the service hands the
+      // transport values, and the transport decides how to render them.
+      // Asserting the old `send` would pass while the reset URL went nowhere.
+      expect(emailService.sendPasswordReset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resetUrl: expect.stringContaining("test-raw-token"),
+        }),
+      );
       expect(result.message).toContain("If that email is registered");
     });
 
@@ -470,6 +478,7 @@ describe("AuthService", () => {
       const result = await authService.forgotPassword("unknown@example.com");
 
       expect(resetTokenService.create).not.toHaveBeenCalled();
+      expect(emailService.sendPasswordReset).not.toHaveBeenCalled();
       expect(result.message).toContain("If that email is registered");
     });
   });

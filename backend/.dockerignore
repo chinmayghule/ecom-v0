@@ -1,0 +1,20 @@
+# Guards the case where this directory is used as a Docker build context.
+#
+# In practice the build runs from the REPO ROOT, because pnpm-lock.yaml,
+# pnpm-workspace.yaml and patches/ only exist there — see the note at the top of
+# Dockerfile. Docker reads a single .dockerignore from the context root, so the
+# file that governs the real build is ../../.dockerignore. This one exists so
+# that a backend-scoped build cannot silently copy a local .env or node_modules
+# into a layer if the context is ever changed.
+
+node_modules
+dist
+coverage
+
+.env
+.env.*
+!.env.example
+
+test
+**/*.spec.ts
+**/*.e2e-spec.ts
