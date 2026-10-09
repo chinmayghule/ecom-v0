@@ -44,10 +44,33 @@ The API serves on port 3001 (see `BACKEND_PORT` in `.env`).
 
 ```sh
 cd backend
-pnpm test        # unit + integration (Vitest)
-pnpm test:e2e    # end-to-end (spins up an isolated test DB on 5433 via Docker Compose)
-pnpm test:cov    # with coverage report
+pnpm test              # unit tests (Vitest)
+pnpm test:integration  # tests needing a real Postgres (boots one on 5433)
+pnpm test:e2e          # end-to-end (spins up an isolated test DB on 5433)
+pnpm test:cov          # with coverage report
 ```
+
+### Test the API
+
+`test:api` runs the committed Postman collection through [Newman](https://newman.run.postman.com/) — the same collection used in the Postman GUI. It needs the server running (`pnpm start:dev`) and, for `forgot-password`, a fresh rate-limit window.
+
+```sh
+cd backend
+pnpm start:dev   # in one terminal
+pnpm test:api    # in another
+```
+
+### Run in Docker
+
+```sh
+docker build -f backend/Dockerfile -t ecom-backend .   # build context must be the repo root
+docker run --rm -p 3001:3001 \
+  -e DATABASE_HOST=... -e DATABASE_USER=... -e DATABASE_PASSWORD=... -e DATABASE_NAME=... \
+  -e JWT_SECRET=... -e JWT_REFRESH_SECRET=... -e CORS_ORIGIN=... \
+  ecom-backend
+```
+
+The server refuses to start in production unless `NODE_ENV`, real secrets, matching JWT secrets, a short access-token lifetime and an explicit `CORS_ORIGIN` are all present.
 
 ---
 
@@ -156,7 +179,7 @@ The backend monolith is in progress. Phase 01 (security hardening and foundation
 - **User module** — CRUD with soft-delete
 - **Database schema** — entities for the full e-commerce domain: users, sessions, login attempts, reset tokens, products, categories, inventory, carts, orders, addresses, seller profiles
 - **Foundations** — Pino structured logging, `/health` endpoint with DB connectivity, email delivery for password reset, environment validation, Argon2id password hashing at OWASP memory cost
-- **Testing** — 207 unit tests across 26 spec files, plus 21 integration tests against a real Postgres, both wired into CI. E2E specs exist but are not yet wired in
+- **Testing** — 217 unit tests across 27 spec files, plus 21 integration tests against a real Postgres, both wired into CI. E2E specs exist but are not yet wired in
 - **Lefthook hooks** — lint pre-commit, lint + build + test coverage pre-push
 - **CI/CD** — GitHub Actions pipeline (lint, build, unit tests on pull requests)
 
