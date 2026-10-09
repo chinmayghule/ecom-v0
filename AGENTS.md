@@ -82,13 +82,26 @@ If an agent sees a decision that is poor practice, a code smell, or a security i
 
 Follow `./COMMIT_STYLE.md` — read that file before writing any commit message. Do not infer style from prior commits.
 
-### Pre-commit
-
-Lefthook runs `pnpm biome check --staged`. Failing lint blocks commit.
-
 ### Adding deps
 
 Use `pnpm add <pkg> --filter <workspace-package>` (not `npm install` or bare `pnpm add`).
+
+### Local-only files (never commit)
+
+**Rule:** a file belongs in git only if someone who has never touched this machine needs it
+to build, run, or review the project.
+
+**Do not add or remove `.gitignore` entries, or change repo-wide conventions, without asking
+the repository owner.** These exclusions are deliberate; a tool's default is not the project's
+decision. If you believe an exclusion is wrong, raise it — do not act on it.
+
+Full path list, rationale, and the guards that enforce it: **`./LOCAL_ONLY_FILES.md`**
+Read it before staging anything that looks like tooling state, secrets, or scratch.
+
+### Pre-commit
+
+Lefthook runs `pnpm biome check --staged` plus the local-only guards described in
+`LOCAL_ONLY_FILES.md`. Failing lint or a guard violation blocks the commit.
 
 ---
 
