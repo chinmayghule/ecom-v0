@@ -156,7 +156,7 @@ The backend monolith is in progress. Phase 01 (security hardening and foundation
 - **User module** — CRUD with soft-delete
 - **Database schema** — entities for the full e-commerce domain: users, sessions, login attempts, reset tokens, products, categories, inventory, carts, orders, addresses, seller profiles
 - **Foundations** — Pino structured logging, `/health` endpoint with DB connectivity, email delivery for password reset, environment validation, Argon2id password hashing at OWASP memory cost
-- **Testing** — 178 unit tests across 24 spec files; E2E specs exist but are not yet wired into CI
+- **Testing** — 207 unit tests across 26 spec files, plus 21 integration tests against a real Postgres, both wired into CI. E2E specs exist but are not yet wired in
 - **Lefthook hooks** — lint pre-commit, lint + build + test coverage pre-push
 - **CI/CD** — GitHub Actions pipeline (lint, build, unit tests on pull requests)
 
@@ -173,6 +173,8 @@ Coverage figures move as the suite grows — CI output is the current source of 
 
 ### CI/CD & Deployment Strategy
 
-**GitHub Actions** runs lint, build, and unit tests on every pull request. **Lefthook** enforces the same gates locally before push — Biome lint on pre-commit, and full lint + build + test coverage on pre-push.
+**GitHub Actions** runs lint, build, unit tests, integration tests, and a migration check on every pull request. The migration check applies, reverts and re-applies the migration chain against a throwaway database, so a migration that cannot build a schema from empty fails the build rather than a new contributor's first run.
+
+**Lefthook** enforces the same gates locally before push — Biome lint on pre-commit, and full lint + build + test coverage on pre-push.
 
 The monolith (Phases 1–2) deploys to Render (backend) + Vercel (frontend) + Neon (PostgreSQL), all free tier. The microservices (Phases 3–5) each get independent Cloud Run services on GCP with per-service build pipelines.
