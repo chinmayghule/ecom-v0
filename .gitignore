@@ -45,7 +45,8 @@ node_modules
 dist
 backend/coverage
 *.tsbuildinfo
-Dockerfile
-
-
-
+# NOTE: Dockerfile is deliberately NOT ignored. Phase 1 deploys the backend to
+# Render via a multi-stage Dockerfile, and the rule at the top of this file says
+# a file belongs in git if a fresh clone needs it to build or run the project.
+# A Dockerfile is exactly that file. Container *artefacts* stay excluded because
+# `dist` and `node_modules` already cover them.

@@ -1,5 +1,8 @@
 name: CI
-on: pull_request
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 jobs:
@@ -17,10 +20,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Local-only files must never enter the repo. This reads .gitignore
-      # directly rather than checking a hardcoded list, so it covers any path
-      # the owner excludes — including ones added after this workflow was
-      # written. Mirrors the pre-commit `guard-ignored-tracked` hook.
+      # Local-only files must never enter the repo.
+      #
+      # This deliberately sweeps the WHOLE index, unlike the pre-commit hook,
+      # which is scoped to the staged set. In CI there is no unrelated commit
+      # for a stale violation to block, so a full sweep has no collateral
+      # damage and catches violations introduced by a merge or a --no-verify
+      # push. Runs on push as well as pull_request so a direct push to dev is
+      # covered too.
       - name: Guard local-only files
         run: |
           leaked=$(git ls-files -i -c --exclude-standard)
