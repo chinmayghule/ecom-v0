@@ -16,6 +16,20 @@ jobs:
           - 5432:5432
     steps:
       - uses: actions/checkout@v6
+
+      # Local-only files must never enter the repo. This reads .gitignore
+      # directly rather than checking a hardcoded list, so it covers any path
+      # the owner excludes — including ones added after this workflow was
+      # written. Mirrors the pre-commit `guard-ignored-tracked` hook.
+      - name: Guard local-only files
+        run: |
+          leaked=$(git ls-files -i -c --exclude-standard)
+          if [ -n "$leaked" ]; then
+            echo "::error::Tracked files are gitignored and must not be committed:"
+            echo "$leaked"
+            exit 1
+          fi
+
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -31,3 +45,4 @@ jobs:
           DATABASE_USER: test
           DATABASE_PASSWORD: test
           DATABASE_NAME: ecom_test
+

@@ -1,6 +1,42 @@
 pre-commit:
   parallel: true
   commands:
+    # G1 — Nothing gitignored may be tracked.
+    # Reads .gitignore directly rather than hardcoding a list, so it also
+    # catches local-only paths that have no entry in guard-local-only-dirs.
+    guard-ignored-tracked:
+      run: |
+        leaked=$(git ls-files -i -c --exclude-standard)
+        if [ -n "$leaked" ]; then
+          echo "Refusing to commit: these paths are gitignored and local-only." >&2
+          echo "$leaked" >&2
+          echo "" >&2
+          echo "If any of them is genuinely project content, add a negation" >&2
+          echo "rule to .gitignore and commit that change alongside." >&2
+          exit 1
+        fi
+
+    # G2 — Every local-only directory must still be excluded.
+    # Removing an ignore rule is the failure mode this prevents: without it,
+    # `git add` would happily stage the whole directory again.
+    #
+    # Trailing slashes are required. The patterns are written as `.planning/`,
+    # which only matches a directory, and --no-index means git cannot stat the
+    # path — so without the slash a fresh clone with no such directory yet
+    # would fail this guard spuriously.
+    #
+    # Keep this list in sync with "Agent & tool state" in .gitignore.
+    guard-local-only-dirs:
+      run: |
+        failed=0
+        for d in .planning/ .pam/ .review/ .scribble/ .opencode/ graphify-out/ .vscode/ archive/; do
+          if ! git check-ignore -q --no-index "$d"; then
+            echo "$d is no longer gitignored — local-only files could be committed" >&2
+            failed=1
+          fi
+        done
+        exit $failed
+
     lint:
       run: pnpm biome check --staged --no-errors-on-unmatched
 

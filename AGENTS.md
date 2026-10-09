@@ -82,13 +82,44 @@ If an agent sees a decision that is poor practice, a code smell, or a security i
 
 Follow `./COMMIT_STYLE.md` — read that file before writing any commit message. Do not infer style from prior commits.
 
-### Pre-commit
-
-Lefthook runs `pnpm biome check --staged`. Failing lint blocks commit.
-
 ### Adding deps
 
 Use `pnpm add <pkg> --filter <workspace-package>` (not `npm install` or bare `pnpm add`).
+
+### Local-only files (never commit)
+
+**The rule:** a file belongs in git only if someone who has never touched this machine needs it to build, run, or review the project. Agent scratch, personal tooling state and secrets fail that test.
+
+These paths are **local-only by design** and must never be committed:
+
+| Path | What it is |
+|---|---|
+| `.planning/` | GSD planning state — roadmap, phase plans, UAT records |
+| `.pam/` | PAM internal tooling |
+| `.review/` | Dated AI code-review reports |
+| `.scribble/` | Personal scratchpad and hand-written reports |
+| `.opencode/` | opencode agent config and its `node_modules` |
+| `graphify-out/` | Generated knowledge graph |
+| `.vscode/` | Personal editor settings |
+| `archive/` | Parked dead code, never built |
+| `.env`, `.env.local`, `.env.test` | Secrets |
+| `node_modules/`, `dist/`, `backend/coverage/`, `*.log` | Dependencies and build output |
+
+`.env.example` is the exception — it is the shared template and is tracked. The canonical `.env` lives at the repo root (see above); `backend/.env.example` is a stale leftover and stays ignored.
+
+**Do not add or remove entries in `.gitignore`, and do not change repo-wide conventions, without asking the repository owner.** These paths were excluded deliberately; a tool's default is not the project's decision. If an agent believes an exclusion is wrong, raise it — do not act on it.
+
+Two guards enforce this, both reading `.gitignore` directly so they cover paths not listed in the table:
+
+- **pre-commit `guard-ignored-tracked`** — fails if any tracked file is also gitignored (catches `git add -f`).
+- **pre-commit `guard-local-only-dirs`** — fails if any directory above stops being gitignored.
+- **CI** — runs `guard-ignored-tracked` on every pull request.
+
+Override deliberately with `git commit --no-verify` only if you have already asked.
+
+### Pre-commit
+
+Lefthook runs `pnpm biome check --staged` plus the two local-only guards above. Failing lint or a guard violation blocks the commit.
 
 ---
 
