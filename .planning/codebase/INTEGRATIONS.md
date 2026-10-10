@@ -1,35 +1,24 @@
 # External Integrations
 
-**Snapshot: 2026-06-15 — corrected 2026-10-10.** Entries checked since then are
-marked. Current state of record is `.planning/STATE.md`.
-
-## On writing down where a secret lives
-
-Naming the environment variable and the file that holds it is **not** a leak, and
-this file should keep doing it — a setup guide that says "unknown" is useless, and
-the variable name carries no capability on its own. What must never appear here is
-the *value*.
-
-`.env.local` is gitignored and `guard-ignored-tracked` blocks it from being staged,
-so the separation is enforced rather than assumed.
+**Analysis Date:** 2026-06-15
 
 ## APIs & External Services
 
 **API Documentation / Testing:**
 - **Postman** - API collection management
   - Collection: `ecom-v0` at https://api.getpostman.com/collections
-  - Auth: API key in `.env.local` (`POSTMAN_API_KEY`) — name and location only
+  - Auth: API key in `.env.local` (`POSTMAN_API_KEY`)
   - Workflow: Sync endpoints after tests pass (manual trigger)
 
 **Transactional Email:**
-- **Resend** - password reset delivery (`src/email/resend-email.service.ts`)
-- **SMTP** - selected via `EMAIL_TRANSPORT`, defaulting to `smtp` in development
-- **Mailpit** — local SMTP sink added since this snapshot. `docker-compose.yml`
-  starts it; web UI on `http://localhost:8025`. `SmtpEmailService` renders the same
-  HTML the Resend transport sends, so a reset email can be inspected as a rendered
-  message rather than copied out of a log line. No env var required; set
-  `EMAIL_TRANSPORT=console` to bypass it and log instead.
-- **DevEmailService** - logs instead of sending, for when there is no SMTP at all
+- **Resend** — password reset delivery (`src/email/resend-email.service.ts`)
+- **SMTP** — selected via `EMAIL_TRANSPORT`, defaults to `smtp` in development
+- **Mailpit** — local SMTP sink in `docker-compose.yml`; UI on `http://localhost:8025`,
+  SMTP on 1025. `SmtpEmailService` renders the same HTML the Resend transport sends,
+  so a reset email can be read as a rendered message instead of copied from a log line.
+  Mailpit keeps messages in memory and never delivers, which is what makes it safe as a
+  default. Set `EMAIL_TRANSPORT=console` to bypass it and log instead.
+- **DevEmailService** — logs instead of sending, for when there is no SMTP at all
 
 ## Data Storage
 
@@ -65,19 +54,18 @@ so the separation is enforced rather than assumed.
 - None configured (no Sentry, Datadog, etc.)
 
 **Logs:**
-- Pino structured logging with PII redaction (Phase 01) — **corrected**, this snapshot said "NestJS default logger"
+- Pino structured logging with PII redaction
 - TypeORM query logging enabled when `NODE_ENV !== 'test'` (`src/app.module.ts:89`)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Not configured (no Vercel, Render, Neon config yet — Phase 11)
+- Not configured (no Vercel, AWS, Railway, etc. config files)
 
 **CI Pipeline:**
-- `.github/workflows/ci.yml` — **corrected**, this snapshot said "not configured".
-  Runs on every PR: local-only guard, planning-state guard, lint, `nest build`,
-  a migration smoke test (apply → revert → apply on an empty database), unit,
-  integration, and E2E. Required status check on both branches is `quality`.
+- `.github/workflows/ci.yml` — on every PR: local-only guard, planning-state guard,
+  lint, `nest build`, migration smoke test (apply → revert → apply on an empty database),
+  unit, integration, and E2E. Required status check on both branches is `quality`.
 
 **Local Dev Infrastructure (Docker Compose):**
 - `docker-compose.yml`:
