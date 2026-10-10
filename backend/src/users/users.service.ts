@@ -16,6 +16,22 @@ export class UsersService {
     });
   }
 
+  /**
+   * Like `findByEmail`, but includes soft-deleted rows.
+   *
+   * `users.email` carries a UNIQUE constraint that TypeORM's `@DeleteDateColumn`
+   * does not relax — a soft-deleted row keeps occupying its address. So
+   * `findByEmail` reports "free" for an address that is in fact still taken,
+   * and the subsequent INSERT trips the constraint. Registration must therefore
+   * ask this question, not the other one.
+   */
+  async findByEmailIncludingDeleted(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { email },
+      withDeleted: true,
+    });
+  }
+
   async findById(id: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { id, deletedAt: IsNull() },

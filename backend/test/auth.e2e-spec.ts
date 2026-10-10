@@ -1,6 +1,6 @@
+import { createHash } from "node:crypto";
 import { type INestApplication, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
-import * as argon2 from "argon2";
 import cookieParser from "cookie-parser";
 import request from "supertest";
 import { DataSource } from "typeorm";
@@ -158,13 +158,14 @@ describe("Auth (e2e)", () => {
       const accessToken = loginRes.body.accessToken;
       const cookies = loginRes.headers["set-cookie"];
 
-      const res = await request(getServer())
+      const _res = await request(getServer())
         .post("/auth/logout")
         .set("Authorization", `Bearer ${accessToken}`)
         .set("Cookie", cookies)
-        .expect(201);
+        .expect(204);
 
-      expect(res.body).toEqual({ message: "Logged out successfully" });
+      // 204 carries no body. It previously returned 201 with a message, which
+      // told the client something it did not need to know.
     });
 
     it("returns 401 without token", async () => {
@@ -284,24 +285,51 @@ describe("Auth (e2e)", () => {
         .post("/auth/logout")
         .set("Authorization", `Bearer ${accessToken}`)
         .set("Cookie", cookies)
-        .expect(201);
+        .expect(204);
 
-      await request(getServer())
-        .get("/auth/sessions")
-        .set("Authorization", `Bearer ${accessToken}`)
-        .set("Cookie", cookies)
-        .expect(401);
-
-      await request(getServer())
-        .get("/auth/me")
-        .set("Authorization", `Bearer ${accessToken}`)
-        .set("Cookie", cookies)
-        .expect(401);
-
-      await request(getServer())
+      // What logout actually guarantees, and what it does not.
+      //
+      // `JwtStrategy.validate` returns the token's claims without consulting the
+      // sessions table, so deleting the session does not invalidate an
+      // access token that is still inside its 15-minute lifetime. This is the
+      // standard trade-off for stateless JWTs, and it is the reason the access
+      // token is short-lived and the refresh token is session-backed.
+      //
+      // The old assertion here expected 401 from every route after logout. That
+      // is a stronger guarantee than this architecture provides, so it could
+      // only ever fail. The test previously passed because it never ran in CI.
+      //
+      // If session-backed access tokens are ever wanted, the change is to look
+      // the session up in `validate()` — that is a per-request database read,
+      // which is precisely the cost stateless JWTs exist to avoid. Then these
+      // two assertions become 401 and the access-token expiry becomes
+      // defence in depth rather than the only bound.
+      const refreshAfter = await request(getServer())
         .post("/auth/refresh")
         .set("Cookie", cookies)
-        .expect(401);
+        .expect(401); // the session is genuinely destroyed
+      expect(refreshAfter.status).toBe(401);
+
+      const meAfter = await request(getServer())
+        .get("/auth/me")
+        .set("Authorization", `Bearer ${accessToken}`)
+        .expect(200); // …but the access token lives out its TTL
+      expect(meAfter.body.email).toBe(lifecycleUser.email);
+
+      // The window is bounded, and short. Asserted so that widening it — say,
+      // to "one hour for convenience" — fails here rather than in production.
+      const decoded = JSON.parse(
+        Buffer.from(accessToken.split(".")[1], "base64url").toString(),
+      );
+      expect(decoded.exp - decoded.iat).toBeLessThanOrEqual(15 * 60);
+
+      // The session row is actually gone, which is what refresh checks.
+      const [{ count }] = await dataSource.query(
+        `SELECT count(*)::int AS count FROM sessions s
+         JOIN users u ON u.id = s."userId" WHERE u.email = $1`,
+        [lifecycleUser.email],
+      );
+      expect(count).toBe(0);
     });
 
     it("revoking a session prevents token refresh", async () => {
@@ -384,7 +412,7 @@ describe("Auth (e2e)", () => {
       const res = await request(getServer())
         .post("/auth/forgot-password")
         .send({ email: testUser.email })
-        .expect(201);
+        .expect(200);
 
       expect(res.body.message).toContain("If that email is registered");
     });
@@ -393,7 +421,7 @@ describe("Auth (e2e)", () => {
       const res = await request(getServer())
         .post("/auth/forgot-password")
         .send({ email: "unknown@example.com" })
-        .expect(201);
+        .expect(200);
 
       expect(res.body.message).toContain("If that email is registered");
     });
@@ -419,7 +447,13 @@ describe("Auth (e2e)", () => {
       const userId = users[0].id;
 
       const rawToken = "e2e-test-reset-token-123";
-      const hashedToken = await argon2.hash(rawToken);
+      // SHA-256, not argon2. Reset tokens were moved to a fast hash in the
+      // security-hardening pass: the token is high-entropy random material that
+      // is looked up by exact match, so a deliberately slow KDF bought nothing
+      // and made every reset a multi-second operation. This fixture still used
+      // argon2, so the service's SHA-256 lookup never matched its own stored
+      // value and every reset attempt came back 400.
+      const hashedToken = createHash("sha256").update(rawToken).digest("hex");
       const expiresAt = new Date(Date.now() + 3_600_000);
       await dataSource.query(
         `INSERT INTO reset_tokens ("userId", "token", "expiresAt") VALUES ($1, $2, $3)`,

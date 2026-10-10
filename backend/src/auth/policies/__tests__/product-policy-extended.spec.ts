@@ -1,5 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { Product } from "../../../entities/product.entity.js";
 import { UserRole } from "../../../entities/user.entity.js";
 import { ProductPolicy } from "../product.policy.js";
 
@@ -8,22 +9,18 @@ interface TestUser {
   role: UserRole;
 }
 
-interface TestProduct {
-  id: string;
-  sellerId: string;
-  isActive: boolean;
-}
+// Anchored to the real entity so a rename breaks compilation here too.
+type TestProduct = Pick<Product, "isLive" | "sellerId">;
 
 const makeUser = (id: string, role: UserRole): TestUser => ({ id, role });
-const makeProduct = (
-  id: string,
-  sellerId: string,
-  isActive: boolean,
-): TestProduct => ({ id, sellerId, isActive });
+const makeProduct = (sellerId: string, isLive: boolean): TestProduct => ({
+  sellerId,
+  isLive,
+});
 
 const customerUser = makeUser("cust-1", UserRole.CUSTOMER);
-const activeProduct = makeProduct("prod-1", "seller-1", true);
-const inactiveProduct = makeProduct("prod-2", "seller-2", false);
+const activeProduct = makeProduct("seller-1", true);
+const inactiveProduct = makeProduct("seller-2", false);
 
 describe("ProductPolicy extended", () => {
   let policy: ProductPolicy;

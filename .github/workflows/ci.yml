@@ -110,3 +110,47 @@ jobs:
           DATABASE_USER: test
           DATABASE_PASSWORD: test
           DATABASE_NAME: ecom_test
+
+      # End-to-end tests — the only step that exercises the real HTTP surface.
+      #
+      # These two spec files existed since the initial scaffold and had never
+      # run in CI. Repairing them turned up three separate defects: a test
+      # asserting a `GET /` route that was never built, status-code expectations
+      # left behind by the security-hardening pass (201 where the API now
+      # returns 204/200), and a reset-token fixture still hashing with argon2
+      # after the tokens moved to SHA-256.
+      #
+      # They also document a limit of the current design: logout revokes the
+      # refresh token immediately, but an access token stays usable until it
+      # expires, because `JwtStrategy.validate` does not consult the sessions
+      # table. That is the standard stateless-JWT trade-off, and the suite now
+      # asserts it explicitly rather than asserting something untrue.
+      #
+      # `.env.test` is gitignored, so the values it would carry are set here.
+      # `setup.e2e.ts` loads it with dotenv, which never overrides an existing
+      # environment variable — these win.
+      - name: End-to-end tests
+        run: pnpm --filter backend test:e2e:ci
+        env:
+          NODE_ENV: test
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: test
+          DATABASE_PASSWORD: test
+          DATABASE_NAME: ecom_test
+          JWT_SECRET: test-jwt-secret-at-least-32-chars-long-for-testing
+          JWT_REFRESH_SECRET: test-refresh-secret-at-least-32-chars-long-for-testing
+          # The suite issues a dozen registrations from one IP in seconds. The
+          # production-shaped defaults (register 5/min) reject that with 429,
+          # and the failures cascade — a throttled register never issues the
+          # refresh cookie later tests assert on. Raised, not removed: the
+          # ThrottlerGuard is still active.
+          RATE_LIMIT_GLOBAL: "100000"
+          RATE_LIMIT_LOGIN: "100000"
+          RATE_LIMIT_REFRESH: "100000"
+          RATE_LIMIT_FORGOT: "100000"
+          RATE_LIMIT_RESET: "100000"
+          RATE_LIMIT_REGISTER: "100000"
+          # No SMTP server in CI. The console transport cannot fail, which keeps
+          # a missing Mailpit from breaking a security test run.
+          EMAIL_TRANSPORT: console

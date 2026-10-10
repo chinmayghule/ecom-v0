@@ -1,8 +1,11 @@
 import { ConfigService } from "@nestjs/config";
 import { Test } from "@nestjs/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { selectEmailTransport } from "../email.module.js";
-import type { EmailService } from "../interfaces/email-service.interface.js";
+import {
+  EMAIL_SERVICE,
+  EmailModule,
+  selectEmailTransport,
+} from "../email.module.js";
 import { ResendEmailService } from "../resend-email.service.js";
 
 const resendSend = vi.fn().mockResolvedValue(undefined);
@@ -27,54 +30,72 @@ vi.mock("resend", () => ({
  */
 describe("selectEmailTransport", () => {
   const resend = { name: "resend" } as unknown as EmailService;
+  const smtp = { name: "smtp" } as unknown as EmailService;
   const dev = { name: "dev" } as unknown as EmailService;
 
   const config = (values: Record<string, string | undefined>) =>
     ({ get: (key: string) => values[key] }) as unknown as ConfigService;
 
-  it("uses the console transport in development", () => {
-    expect(
-      selectEmailTransport(config({ NODE_ENV: "development" }), resend, dev),
-    ).toBe(dev);
+  const pick = (values: Record<string, string | undefined>) =>
+    selectEmailTransport(config(values), resend, smtp, dev);
+
+  describe("defaults by environment", () => {
+    it("uses SMTP in development, so resets land in Mailpit", () => {
+      expect(pick({ NODE_ENV: "development" })).toBe(smtp);
+    });
+    it("uses Resend in production when an API key is present", () => {
+      expect(
+        pick({ NODE_ENV: "production", RESEND_API_KEY: "re_live_x" }),
+      ).toBe(resend);
+    });
+    it("uses the console transport in test", () => {
+      expect(pick({ NODE_ENV: "test" })).toBe(dev);
+    });
+    it("uses the console transport when NODE_ENV is unset", () => {
+      expect(pick({})).toBe(dev);
+    });
   });
 
-  it("uses Resend in production when an API key is present", () => {
-    expect(
-      selectEmailTransport(
-        config({ NODE_ENV: "production", RESEND_API_KEY: "re_live_x" }),
-        resend,
-        dev,
-      ),
-    ).toBe(resend);
-  });
-
-  it("falls back to the console transport when production has no API key", () => {
+  describe("production without a usable Resend key", () => {
     // Better than handing out a ResendEmailService with an undefined client:
     // onModuleInit throws in that case, so the operator sees the missing key at
     // startup instead of getting a 500 from the first password reset.
-    expect(
-      selectEmailTransport(config({ NODE_ENV: "production" }), resend, dev),
-    ).toBe(dev);
+    it("falls back to console when the key is absent", () => {
+      expect(pick({ NODE_ENV: "production" })).toBe(dev);
+    });
+    it("treats an empty key as missing", () => {
+      expect(pick({ NODE_ENV: "production", RESEND_API_KEY: "" })).toBe(dev);
+    });
   });
 
-  it("treats an empty API key as missing", () => {
-    expect(
-      selectEmailTransport(
-        config({ NODE_ENV: "production", RESEND_API_KEY: "" }),
-        resend,
+  describe("explicit EMAIL_TRANSPORT", () => {
+    it("overrides the environment default", () => {
+      expect(pick({ NODE_ENV: "production", EMAIL_TRANSPORT: "console" })).toBe(
         dev,
-      ),
-    ).toBe(dev);
-  });
+      );
+      expect(pick({ NODE_ENV: "test", EMAIL_TRANSPORT: "smtp" })).toBe(smtp);
+    });
 
-  it("uses the console transport when NODE_ENV is unset", () => {
-    expect(selectEmailTransport(config({}), resend, dev)).toBe(dev);
-  });
+    it("still requires a Resend key when resend is requested explicitly", () => {
+      expect(pick({ NODE_ENV: "development", EMAIL_TRANSPORT: "resend" })).toBe(
+        dev,
+      );
+      expect(
+        pick({
+          NODE_ENV: "development",
+          EMAIL_TRANSPORT: "resend",
+          RESEND_API_KEY: "re_x",
+        }),
+      ).toBe(resend);
+    });
 
-  it("uses the console transport in test", () => {
-    expect(
-      selectEmailTransport(config({ NODE_ENV: "test" }), resend, dev),
-    ).toBe(dev);
+    // Silently falling back would mean "console" in production, so nobody would
+    // see a reset email leave the box. A typo must be loud.
+    it("rejects an unknown transport instead of falling back", () => {
+      expect(() => pick({ EMAIL_TRANSPORT: "mailpit" })).toThrow(
+        /EMAIL_TRANSPORT must be one of console, smtp, resend/,
+      );
+    });
   });
 });
 
@@ -104,5 +125,53 @@ describe("ResendEmailService lifecycle", () => {
   it("only warns outside production", async () => {
     const service = await build({ NODE_ENV: "development" });
     expect(() => service.onModuleInit()).not.toThrow();
+  });
+});
+
+describe("EmailModule.forRoot", () => {
+  /**
+   * Compiles the module for real rather than stubbing the factory.
+   *
+   * The selection logic has its own tests above; what they cannot catch is a
+   * provider that is listed but not resolvable — a mis-declared `inject`, or a
+   * transport added to the factory without being provided. That fails at boot
+   * and nowhere else, which is the same class of defect as the original bug:
+   * correct in isolation, wrong when assembled.
+   */
+  it("resolves EMAIL_SERVICE with every provider wired", async () => {
+    const module = await Test.createTestingModule({
+      imports: [EmailModule.forRoot()],
+    }).compile();
+    const service = module.get<EmailService>(EMAIL_SERVICE);
+    expect(service).toBeDefined();
+    expect(typeof service.send).toBe("function");
+    expect(typeof service.sendPasswordReset).toBe("function");
+    await module.close();
+  });
+
+  it("selects the transport the configuration names", async () => {
+    const previous = process.env.EMAIL_TRANSPORT;
+    try {
+      process.env.EMAIL_TRANSPORT = "smtp";
+      const module = await Test.createTestingModule({
+        imports: [EmailModule.forRoot()],
+      }).compile();
+      expect(module.get<EmailService>(EMAIL_SERVICE).constructor.name).toBe(
+        "SmtpEmailService",
+      );
+      await module.close();
+
+      process.env.EMAIL_TRANSPORT = "console";
+      const other = await Test.createTestingModule({
+        imports: [EmailModule.forRoot()],
+      }).compile();
+      expect(other.get<EmailService>(EMAIL_SERVICE).constructor.name).toBe(
+        "DevEmailService",
+      );
+      await other.close();
+    } finally {
+      if (previous === undefined) delete process.env.EMAIL_TRANSPORT;
+      else process.env.EMAIL_TRANSPORT = previous;
+    }
   });
 });

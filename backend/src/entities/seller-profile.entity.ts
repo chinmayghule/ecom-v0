@@ -7,6 +7,7 @@ import {
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { Address } from "./address.entity.js";
@@ -20,6 +21,9 @@ export class SellerProfile {
   @OneToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn()
   user!: User;
+
+  @RelationId((e: SellerProfile) => e.user)
+  userId!: string;
 
   @Column()
   storeName!: string;
@@ -35,6 +39,9 @@ export class SellerProfile {
 
   @ManyToOne(() => Address, { nullable: true, onDelete: "SET NULL" })
   originAddress: Address | null = null;
+
+  @RelationId((e: SellerProfile) => e.originAddress)
+  originAddressId!: string | null;
 
   @CreateDateColumn()
   createdAt!: Date;

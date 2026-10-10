@@ -44,6 +44,33 @@ describe("UsersService", () => {
     repo = module.get(getRepositoryToken(User));
   });
 
+  describe("findByEmailIncludingDeleted", () => {
+    // Registration uses this, not `findByEmail`, because the UNIQUE constraint
+    // on `users.email` still covers soft-deleted rows. The integration test in
+    // src/integration/register-soft-delete.integration.spec.ts proves what that
+    // means against a real database; this pins the query it sends.
+    it("asks for soft-deleted rows too", async () => {
+      const user = mockUser();
+      vi.mocked(repo.findOne).mockResolvedValue(user);
+
+      const result =
+        await service.findByEmailIncludingDeleted("test@example.com");
+
+      expect(repo.findOne).toHaveBeenCalledWith({
+        where: { email: "test@example.com" },
+        withDeleted: true,
+      });
+      expect(result).toEqual(user);
+    });
+
+    it("returns null when the address has never been used", async () => {
+      vi.mocked(repo.findOne).mockResolvedValue(null);
+      await expect(
+        service.findByEmailIncludingDeleted("free@example.com"),
+      ).resolves.toBeNull();
+    });
+  });
+
   describe("findByEmail", () => {
     it("returns user when found", async () => {
       const user = mockUser();

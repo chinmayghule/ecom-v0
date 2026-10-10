@@ -4,6 +4,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { Cart } from "./cart.entity.js";
@@ -17,8 +18,14 @@ export class CartItem {
   @ManyToOne(() => Cart, { onDelete: "CASCADE" })
   cart!: Cart;
 
+  @RelationId((e: CartItem) => e.cart)
+  cartId!: string;
+
   @ManyToOne(() => Product, { onDelete: "CASCADE" })
   product!: Product;
+
+  @RelationId((e: CartItem) => e.product)
+  productId!: string;
 
   @Column({ default: 1 })
   quantity!: number;
