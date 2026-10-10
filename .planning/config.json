@@ -3,7 +3,7 @@
     "branching_strategy": "phase",
     "base_branch": "dev",
     "create_tag": true,
-    "phase_branch_template": "feature/phase-{phase}-{slug}",
+    "phase_branch_template": "feature/{phase}-{slug}",
     "milestone_branch_template": "release/{milestone}-{slug}"
   },
   "workflow": {

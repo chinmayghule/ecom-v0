@@ -153,17 +153,40 @@ Two things make that re-derivation reliable, both learned the hard way:
 
 ## Routine workflow
 
+Every phase runs on its own branch, **created before planning** — so the plan and
+the code it describes land in one PR. Naming is `feature/<NN>-<slug>`; the full
+rationale is in `GIT_WORKFLOW.md` § *GSD phase branches*.
+
+```
+git switch dev && git pull
+git checkout -b feature/03-data-integrity-and-code-quality
+
+/gsd-discuss-phase 3      →  03-CONTEXT.md
+/gsd-plan-phase 3         →  03-PLAN.md
+/gsd-execute-phase 3      →  the code
+/gsd-verify-work 3        →  evidence
+
+gh pr create               →  dev, using "Rebase and merge"
+```
+
 | Situation | Command |
 |---|---|
 | Start a session | `pnpm gsd:doctor`, then `/gsd-progress` |
 | Know what is next | `/gsd-progress --next` |
-| Begin the next phase | `/gsd-discuss-phase 3` |
-| Turn decisions into plans | `/gsd-plan-phase 3` |
-| Build it | `/gsd-execute-phase 3` |
-| Prove it works | `/gsd-verify-work 3` |
+| Start the next phase | branch first, then `/gsd-discuss-phase N` |
+| Turn decisions into plans | `/gsd-plan-phase N` |
+| Build it | `/gsd-execute-phase N` |
+| Prove it works | `/gsd-verify-work N` |
 
 `ROADMAP.md`, `STATE.md`, and `PROJECT.md` are authoritative for phase state.
 `AGENTS.md` is a secondary config aid and goes stale.
+
+**One phase at a time.** Every phase branch edits `ROADMAP.md` and `STATE.md` to mark
+its own phase complete. Running two at once conflicts on exactly those two files.
+
+`/gsd-plan-phase` and `/gsd-discuss-phase` commit their artifacts to the current
+branch, so create the branch *first* — otherwise the plan lands on `dev` and the PR
+shows implementation without its reasoning.
 
 ### When a phase completes
 

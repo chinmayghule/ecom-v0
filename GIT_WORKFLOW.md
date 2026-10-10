@@ -14,20 +14,72 @@ complete. `main` is what a deploy reads.
 
 ## Merge strategy
 
-| From | To | Method |
-|---|---|---|
-| `feature/*` | `dev` | squash |
-| `dev` | `main` | merge commit |
+| From | To | Method | Why |
+|---|---|---|---|
+| `feature/*` | `dev` | **Rebase and merge** | Short-lived branches. Keeps `dev` linear, and the real commits survive instead of collapsing into one. |
+| `dev` | `main` | **Merge commit** | Carries `dev`'s commits into `main`'s ancestry, and records that a promotion happened. |
 
-Squash-merging `dev → main` is wrong because `dev` is not short-lived — it is
-worked on continuously. A squash creates a new commit instead of carrying
-`dev`'s commits into `main`'s ancestry, leaving the two with identical files but
-unrelated histories, which makes promotions conflict. GitHub's
-[merge-methods docs](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/about-merge-methods-on-github)
-state that squash merging "works best for short-lived branches".
+Squash merging stays **available** — it is occasionally the right tool for
+collapsing a genuinely noisy branch. It is simply not the default on either path.
 
-Squashing `feature/* → dev` is correct: those branches are short-lived and one
-PR is one logical change.
+Branch protection already supports this: `dev` requires linear history, so rebase
+merges are what it accepts; `main` has linear history disabled precisely so it can
+take promotion merge commits.
+
+### Why `dev → main` must not be squashed
+
+`dev` is not short-lived — it is worked on continuously. A squash creates a new
+commit instead of carrying `dev`'s commits into `main`'s ancestry, leaving the two
+with identical files but unrelated histories.
+
+That is not hypothetical here. Promotions #13 and #17 were squash-merged:
+
+```
+$ git rev-list --count origin/main..origin/dev
+13
+$ git rev-list --count origin/dev..origin/main
+2                                       # e36971d, 41f6698 — both squashes
+```
+
+`main` does not contain `dev`'s commits; it contains squashed replacements. The
+trees match, so nothing looks wrong. But a merge commit conflicts **today**:
+
+```
+CONFLICT (content): AGENTS.md
+CONFLICT (content): COMMIT_STYLE.md
+CONFLICT (add/add):  GIT_CONVENTIONS.md
+```
+
+`main`'s squash rewrote those files, then `dev` changed them again, so both sides
+look modified. One promotion using **Create a merge commit** — taking `dev`'s side
+of those three files — resolves the divergence permanently.
+
+## GSD phase branches
+
+Each GSD phase gets its own branch, created **before** planning, so the plan and
+the code it describes land in one PR:
+
+```
+feature/03-data-integrity-and-code-quality
+
+  /gsd-discuss-phase 3    →  03-CONTEXT.md
+  /gsd-plan-phase 3       →  03-PLAN.md
+  /gsd-execute-phase 3    →  the code
+                          →  one PR carrying decisions, plan, and implementation
+```
+
+Naming is `feature/<NN>-<slug>`, matching `.planning/phases/<NN>-<name>/`. The
+number goes first so branches sort in phase order and map directly onto the phase
+directories. It is not a tool-specific prefix, so `GIT_CONVENTIONS.md`'s ban on
+`gsd/`, `claude/` and similar still holds.
+
+Two consequences worth stating:
+
+- **The plan is part of the deliverable.** A reviewer reads the reasoning and the
+  implementation in one diff, and `dev` only ever receives complete, reviewed phases.
+- **One phase at a time.** `ROADMAP.md` and `STATE.md` are shared across every
+  phase branch, because each phase marks its own phase complete. Two phases worked
+  at once would conflict on exactly those two files.
 
 ## Protected branches
 
@@ -46,23 +98,48 @@ advice is for short-lived feature branches, where deletion signals completion.
 **No PR merges into `origin/dev` without a human having read it.** This applies
 to agents as much as to anyone else: an agent-authored PR is not self-reviewed.
 
-**GitHub cannot enforce this on a solo repository.** Authors cannot approve
-their own pull requests, and there is no setting to change that — the API
-returns `422 Review Can not approve your own pull request`. With one
-maintainer there is no second human, so `required_approving_review_count: 1`
-would leave the repository permanently unmergeable.
+**GitHub cannot enforce this on a solo repository.** Authors cannot approve their
+own pull requests, and there is no setting to change that — the API returns
+`422 Review Can not approve your own pull request`. With one maintainer there is
+no second human, so requiring an approval on `main` would leave the repository
+permanently unmergeable.
 
-The owner is therefore on the ruleset bypass list, which means the approval
-requirement does not apply to them. Everything else still does: `dev` and `main`
-require a PR, require CI to pass, and block deletion and force-pushes.
+So the two branches enforce different things, deliberately:
 
-What that leaves is a rule held to rather than enforced. Reviewing your own diff
-before opening the PR is the mechanism; the guardrail does not exist.
+| Branch | Approvals | Enforce admins | Net effect |
+|---|---|---|---|
+| `dev` | 1 required | no | The requirement stands as policy; the owner is exempt through `enforce_admins: false`. |
+| `main` | 0 required | **yes** | No approval needed — and nobody, including admins, can change it without a PR and green CI. |
 
-A change so small that reading it costs more than the change itself — a typo, a
-one-line correction, an obviously mechanical edit — does not need it. Not exempt:
-anything altering behaviour, adding a dependency, changing a migration, or
-touching auth.
+`main` does not gate on human approval because **a self-approval would be a rubber
+stamp**: one human, reading agent-written code. It gates on CI instead, which for
+this repository is the stronger guarantee — the `quality` job runs the migration
+smoke test that catches schema bugs a reviewer would not notice, and `strict: true`
+means `main` refuses to merge against a stale run.
+
+### The general lesson
+
+**A control that cannot be satisfied is not a control. It is a blockage.**
+
+This exact trap produced the squash problem above. The approval requirement blocked
+every promotion; the bypass was taken to get work done; and the bypass silently
+broke a different rule. The failure was not dishonesty — the protection did
+exactly what it was configured to do. It was configuring a guarantee that the
+project could not honour.
+
+The controls on `main` that *are* enforceable, and that actually protect a deploy:
+
+- a PR is required, with `enforce_admins: true` — direct pushes fail even for the owner
+- CI `quality` must pass and be **current**
+- no deletions, no force-pushes
+- conversations must be resolved before merging
+
+If a second human is ever available, raise `main`'s approval count. Until then, CI
+is the gate, and it is a real one.
+
+If you want a human read for its own sake on a solo repo, the options are a
+collaborator or a review-bot app — a separate GitHub actor, so it is permitted to
+approve. Neither is required.
 
 ## CI
 
@@ -84,25 +161,38 @@ already ran.
 ## Branch protection settings
 
 These live in the GitHub API, not in a file. Nothing in the repository will tell
-you if they drift.
+you if they drift. Verified 2026-10-10:
 
 | Branch | Setting | Value |
 |---|---|---|
-| `dev` | required status checks | `quality` |
-| `dev` | required approving reviews | 1 — bypassed by the ruleset |
+| `dev` | required status checks | `quality` (strict — must be current) |
+| `dev` | required approving reviews | 1 |
+| `dev` | enforce admins | no — owner exempt from the approval |
 | `dev` | dismiss stale reviews | yes |
-| `dev` | require linear history | yes |
-| `dev` | allow deletions / force pushes | no |
-| `main` | required status checks | `quality` |
+| `dev` | require linear history | yes — this is why `feature/* → dev` rebases |
+| `dev` | require conversation resolution | no |
+| `dev` | allow deletions / force pushes | no / no |
+| `main` | required status checks | `quality` (strict — must be current) |
+| `main` | required approving reviews | 0 — see *Human review* |
+| `main` | enforce admins | **yes** — no direct pushes, owner included |
+| `main` | dismiss stale reviews | yes |
+| `main` | require linear history | no — this is what allows promotion merge commits |
 | `main` | require conversation resolution | yes |
-| `main` | require linear history | no — allows promotion merge commits |
-| `main` | enforce admins | yes |
-| `main` | allow deletions / force pushes | no |
+| `main` | allow deletions / force pushes | no / no |
+| repository | merge methods enabled | merge, rebase, **and** squash |
 | repository | delete branch on merge | no |
-| ruleset | bypass list | repository owner (`chinmayghule`) |
+| repository | rulesets | none — the guarantees above are branch protection only |
 
-The bypass covers the approval requirement only. PRs, CI, and the delete /
-force-push blocks still apply to the owner.
+Two asymmetries are intentional, and both are load-bearing:
+
+- **`enforce_admins` differs** (`dev` no, `main` yes). `dev` must stay mergeable by
+  a solo owner; `main` must not be touchable by anyone without a PR.
+- **`require_linear_history` differs** (`dev` yes, `main` no). `dev` stays a clean
+  linear line; `main` needs the merge commit that records a promotion.
+
+There is no ruleset on this repository. Anything described elsewhere as a
+"bypass list" does not exist here — exemption comes from `enforce_admins`, and it
+applies to `dev` only.
 
 ## Local hooks
 

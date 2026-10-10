@@ -98,14 +98,15 @@ Vercel + Render + Neon.
 
 ## Evolution
 
-This document evolves at stage transitions and milestone boundaries.
+This document evolves at phase and milestone boundaries.
 
-**After each stage transition** (via `/gsd-complete-milestone`):
+**After each phase completes** (on its own `feature/<NN>-<slug>` branch):
 1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with stage reference
+2. Requirements validated? → Move to Validated with phase reference
 3. New requirements emerged? → Add to Active
 4. Decisions to log? → Add to Key Decisions
 5. "What This Is" still accurate? → Update if drifted
+6. Did this phase finish something the roadmap still lists as open? → Update `ROADMAP.md`
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -114,4 +115,4 @@ This document evolves at stage transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-10 — restored from git and reconciled with the current master document. Stage terminology throughout; Out of Scope corrected against the #9 restructure.*
+*Last updated: 2026-10-10 — restored from git and reconciled with the current master document. Stage terminology throughout; Out of Scope corrected against the #9 restructure. Phase-branch workflow added.*
