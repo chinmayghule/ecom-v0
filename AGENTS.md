@@ -100,6 +100,11 @@ If an agent sees a decision that is poor practice, a code smell, or a security i
 | `./COMMIT_STYLE.md` | how a commit message is written |
 | `./GIT_CONVENTIONS.md` | commit-message format and branch naming |
 | `./GIT_WORKFLOW.md` | branch flow, merge strategy, review rules, CI, protection settings |
+| `./GSD_WORKFLOW.md` | planning state: what is tracked, phase↔master-doc mapping, `pnpm gsd:doctor` |
+
+**Do not add `.planning/` to `.gitignore`.** The planning record is project
+documentation, not scratch, and it was lost on 2026-10-10 precisely because it
+was ignored. `guard-planning-tracked` blocks this.
 
 Never push to `origin/main`, never delete `origin/dev`, and never merge into
 `origin/dev` without a human approving review — an agent-authored PR is not

@@ -20,7 +20,6 @@ These paths are excluded on purpose. Do not commit them.
 
 | Path | What it is |
 |---|---|
-| `.planning/` | GSD planning state — roadmap, phase plans, UAT records |
 | `.pam/` | PAM internal tooling |
 | `.review/` | Dated AI code-review reports |
 | `.scribble/` | Personal scratchpad and hand-written reports |
@@ -30,6 +29,7 @@ These paths are excluded on purpose. Do not commit them.
 | `archive/` | Parked dead code, never built |
 | `.env`, `.env.local`, `.env.test` | Secrets |
 | `node_modules/`, `dist/`, `backend/coverage/`, `*.log` | Dependencies and build output |
+| `.planning/**/.continue-here.md`, `*HANDOFF*.md`, `*handoff*.json` | Ephemeral GSD session markers |
 
 `.env.example` is the exception — it is the shared template and **is** tracked.
 
@@ -45,6 +45,31 @@ backend to Render via a multi-stage Dockerfile, and the rule above says a file b
 git when a fresh clone needs it to build or run the project. Container *artefacts* stay
 excluded — `dist` and `node_modules` already cover them.
 
+**`.planning/` was also gitignored until 2026-10-10, and is now tracked.** This reversed a
+previous decision, so the reasoning is recorded rather than quietly overwritten.
+
+It was ignored on the reasoning that it was *"agent scratch for one machine."* That is
+true of some of it and false of the rest. `ROADMAP.md`, `STATE.md`, `PROJECT.md`, and the
+per-phase context, plan, verification, and UAT records are project documentation — the
+equivalent of ADRs and a test plan — and the repo is public and meant to be read.
+
+More importantly, **a gitignored directory is unprotected, not merely untracked.** Git
+keeps no record of it, so `git reset --hard`, `git clean -fd`, a fresh clone, or a new
+machine delete it silently. That is not theoretical: on 2026-10-10 the ignore rule cost
+the project its roadmap. `ROADMAP.md` had never been tracked and had to be rebuilt from
+`ecom_project_master.md`; the rest were recoverable only by accident, because they had
+been force-added before the rule landed.
+
+The rule above resolves this better than the ignore rule did. A planning record is
+exactly the kind of file that fails the test — *"a file belongs in git only if someone
+who has never touched this machine needs it to build, run, or review the project"* —
+because a reviewer absolutely needs it to understand why the code is shaped as it is.
+
+Only genuinely ephemeral files stay ignored: `.continue-here.md` and handoff markers,
+which record where one session stopped mid-thought and mean nothing to anyone else.
+See `GSD_WORKFLOW.md` for the full split, and `guard-planning-tracked` for what stops
+this from being undone.
+
 ---
 
 ## Do not act on these without asking
@@ -57,22 +82,30 @@ the `.planning/` entry was once removed by an agent because its own tool wanted 
 committed, which staged 279 KB of scratch. If an agent believes an exclusion is wrong,
 raise it — do not act on it.
 
+The `.planning/` entry has since been re-added *by the owner*, on the evidence in
+**Deliberately NOT ignored** above. The incident it caused is documented rather than
+quietly reversed, so the reasoning survives.
+
 Override the guards with `git commit --no-verify` only if you have already asked.
 
 ---
 
 ## What enforces this
 
-Three guards, so the rule cannot be reversed by accident:
+Four guards, so the rule cannot be reversed by accident:
 
 | Guard | Where | Prevents |
 |---|---|---|
 | `guard-ignored-tracked` | pre-commit | Staging a gitignored path. Scoped to the **staged set**, so one stale violation does not block unrelated commits. |
 | `guard-local-only-dirs` | pre-commit | A local-only directory **stopping** being gitignored. Also cross-checks that `.gitignore` and the guard agree, so a newly ignored path is not silently unguarded. |
+| `guard-planning-tracked` | pre-commit | `.planning/` becoming unprotected again. Asserts the planning files are **not** gitignored *and* are actually **tracked** — a file that exists but was never committed is as lost as one that was deleted. |
 | whole-index sweep | CI (push + PR) | Tracked-and-ignored files anywhere in the tree — including ones introduced by a merge or a `--no-verify` push. Sweeps the whole index here because in CI there is no unrelated commit for a stale violation to block. |
+| Guard planning state | CI (push + PR) | Planning files missing or untracked in the repo. Mirrors `guard-planning-tracked` so a `--no-verify` push still fails. |
 
 The pre-commit guards are scoped to staged changes; the CI sweep is deliberately
 whole-index. That asymmetry is intentional.
+
+`pnpm gsd:doctor` reports on the state of all of this at any time — see `GSD_WORKFLOW.md`.
 
 ### Why `guard-local-only-dirs` keeps an explicit list
 

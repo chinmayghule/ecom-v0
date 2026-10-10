@@ -40,14 +40,14 @@ pre-commit:
     # The names are committed in .gitignore anyway, so an explicit list hides
     # nothing. What it buys is a second, independent record that must agree.
     #
-    # Trailing slashes are required. The patterns are written as `.planning/`,
-    # which only matches a directory, and --no-index means git cannot stat the
-    # path — so without the slash a fresh clone with no such directory yet
-    # would fail this guard spuriously.
+    # Trailing slashes are required. The patterns are written as `.pam/`, which
+    # only matches a directory, and --no-index means git cannot stat the path — so
+    # without the slash a fresh clone with no such directory yet would fail this
+    # guard spuriously.
     guard-local-only-dirs:
       run: |
         failed=0
-        expected=".planning/ .pam/ .review/ .scribble/ .opencode/ graphify-out/ .vscode/ archive/"
+        expected=".pam/ .review/ .scribble/ .opencode/ graphify-out/ .vscode/ archive/"
 
         for d in $expected; do
           if ! git check-ignore -q --no-index "$d"; then
@@ -68,6 +68,40 @@ pre-commit:
           echo "Update both so a newly ignored path is actually guarded." >&2
           failed=1
         fi
+
+        exit $failed
+
+    # G3 — The GSD planning state must stay protected.
+    #
+    # The inverse of G2, and the one guard that would have prevented the loss of
+    # 2026-10-10. `.planning/` was gitignored in full; ROADMAP.md, STATE.md,
+    # PROJECT.md and two phase records went missing with no recovery path, because
+    # a gitignored directory is unprotected rather than merely untracked. The
+    # roadmap had to be rebuilt from scratch.
+    #
+    # Two assertions, because they fail in different situations:
+    #   1. not gitignored  — catches someone re-adding `.planning/` to .gitignore
+    #   2. actually tracked — catches the files existing but never being committed
+    #
+    # Deliberately checks only the three top-level state files. Ephemeral session
+    # markers (.continue-here.md, handoffs) are ignored on purpose and must not be
+    # added here.
+    guard-planning-tracked:
+      run: |
+        failed=0
+        protected=".planning/ROADMAP.md .planning/STATE.md .planning/PROJECT.md"
+
+        for f in $protected; do
+          if git check-ignore -q --no-index "$f"; then
+            echo "$f is gitignored — planning state would be lost again." >&2
+            echo "The planning record is project documentation, not scratch." >&2
+            failed=1
+          elif [ -e "$f" ] && ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+            echo "$f exists but is not tracked — it would not survive a reset." >&2
+            echo "git add it alongside whatever changed it." >&2
+            failed=1
+          fi
+        done
 
         exit $failed
 
