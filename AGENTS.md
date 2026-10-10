@@ -93,13 +93,19 @@ Next.js with App Router, TypeScript, Tailwind CSS. See `./ecom_project_master.md
 
 If an agent sees a decision that is poor practice, a code smell, or a security issue, **flag it and explain the better approach**. The user wants to learn industry standards, not just ship code.
 
-### Commit style
+### Git conventions
 
-Follow `./GIT_CONVENTIONS.md`.
+| File | Covers |
+|---|---|
+| `./COMMIT_STYLE.md` | how a commit message is written |
+| `./GIT_CONVENTIONS.md` | commit-message format and branch naming |
+| `./GIT_WORKFLOW.md` | branch flow, merge strategy, review rules, CI, protection settings |
 
-### Branch naming
+Never push to `origin/main`, never delete `origin/dev`, and never merge into
+`origin/dev` without a human approving review — an agent-authored PR is not
+self-reviewed.
 
-Follow `./GIT_CONVENTIONS.md`.
+Branch names follow Conventional Branch: `feature/`, `fix/`, `chore/`, `docs/`, `release/` plus a kebab-case description. No tool-specific prefixes.
 
 ### Adding deps
 
