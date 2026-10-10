@@ -95,20 +95,15 @@ If an agent sees a decision that is poor practice, a code smell, or a security i
 
 ### Git conventions
 
-Three files, each authoritative for one thing. Read the relevant one before acting on git or GitHub.
-
 | File | Covers |
 |---|---|
-| `./COMMIT_STYLE.md` | how a commit message is written — types, scope, body, branch flow |
-| `./GIT_CONVENTIONS.md` | commit-message format and branch naming in detail |
-| `./GIT_WORKFLOW.md` | where work goes, merge strategy, review rules, CI, and the branch-protection settings that enforce them |
+| `./COMMIT_STYLE.md` | how a commit message is written |
+| `./GIT_CONVENTIONS.md` | commit-message format and branch naming |
+| `./GIT_WORKFLOW.md` | branch flow, merge strategy, review rules, CI, protection settings |
 
-The rules that most often get broken by an agent:
-
-- **Never push to `origin/main`.** It changes only via a promotion PR from `origin/dev`. Branch protection blocks every other route.
-- **Never delete `origin/dev`.** It is a long-lived integration branch. `gh pr merge --delete-branch` on a `dev → main` PR targets `dev` as the head branch and will attempt to delete it.
-- **Never merge anything into `origin/dev` without a human approving review.** An agent-authored PR is not self-reviewed, however large or small the agent thinks it is.
-- **Squash `feature/* → dev`; use a merge commit for `dev → main`.** Squashing a long-lived head branch is what GitHub's own docs warn against.
+Never push to `origin/main`, never delete `origin/dev`, and never merge into
+`origin/dev` without a human approving review — an agent-authored PR is not
+self-reviewed.
 
 Branch names follow Conventional Branch: `feature/`, `fix/`, `chore/`, `docs/`, `release/` plus a kebab-case description. No tool-specific prefixes.
 

@@ -38,28 +38,14 @@ docs: replace stale project brief with ecom_project_master.md
 
 Append `!` after the type/scope: `feat!`: `feat(auth)!: drop support for legacy tokens`.
 
-## Branch flow
+## Branch flow and merge strategy
 
 ```
 feature/*  ->  dev  ->  main
 ```
 
-Merge strategy: squash `feature/*` into `dev`, merge-commit `dev` into `main`.
-`GIT_WORKFLOW.md` explains why, and records the branch-protection settings that
-enforce it.
-
-## PR merges
-
-| From | To | Method |
-|---|---|---|
-| `feature/*` | `dev` | squash — the squashed message becomes the merge title |
-| `dev` | `main` | merge commit |
-
-Squashing is correct for a short-lived feature branch and wrong for a
-long-lived integration branch. `dev` is worked on continuously, so squash-merging
-it into `main` leaves the two historically unrelated and makes promotions
-conflict for no reason. `GIT_WORKFLOW.md` covers this, along with the review
-requirement, CI, and the branch-protection settings.
+Squash `feature/*` into `dev`; merge-commit `dev` into `main`. `GIT_WORKFLOW.md`
+explains why and records the rules that enforce it.
 
 ## Scope rule
 
