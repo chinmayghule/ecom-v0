@@ -1,0 +1,263 @@
+import { type INestApplication, ValidationPipe } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
+import cookieParser from "cookie-parser";
+import { doubleCsrf } from "csrf-csrf";
+import request from "supertest";
+import { DataSource } from "typeorm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { AppModule } from "../src/app.module.js";
+import { CsrfService } from "../src/auth/csrf.service.js";
+import { PoliciesGuard } from "../src/auth/guards/policies.guard.js";
+import { EMAIL_SERVICE } from "../src/email/email.module.js";
+
+// Create CSRF middleware and token generator at module level (before tests run)
+const csrfSetup = doubleCsrf({
+  getSecret: () => process.env.CSRF_SECRET ?? "test-csrf-secret-at-least-32-chars-long-for-testing",
+  getSessionIdentifier: (req) => req.cookies?.refreshToken ?? req.ip,
+  cookieName: "__Host-psifi.x-csrf-token",
+  cookieOptions: {
+    sameSite: "strict",
+    path: "/",
+    secure: true,
+    httpOnly: true,
+  },
+  size: 32,
+  ignoredMethods: ["GET", "HEAD", "OPTIONS"],
+  getCsrfTokenFromRequest: (req) => req.headers["x-csrf-token"],
+});
+const doubleCsrfProtection = csrfSetup.doubleCsrfProtection;
+const testCsrfGenerateToken = csrfSetup.generateCsrfToken;
+
+describe("Security (e2e)", () => {
+  let app: INestApplication;
+  let dataSource: DataSource;
+  let csrfToken: string;
+  let csrfCookies: string[];
+
+  beforeAll(async () => {
+    const moduleFixture = await Test.createTestingModule({
+      imports: [AppModule],
+    })
+      .overrideProvider(PoliciesGuard)
+      .useValue({ canActivate: () => true })
+      .overrideProvider(EMAIL_SERVICE)
+      .useValue({ send: async () => {} })
+      .overrideProvider(CsrfService)
+      .useValue({
+        generateToken: (req: any, res: any) => testCsrfGenerateToken(req, res),
+      })
+      .compile();
+
+    app = moduleFixture.createNestApplication();
+    app.use(cookieParser());
+    app.use(doubleCsrfProtection);
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+    await app.init();
+
+    dataSource = app.get(DataSource);
+    await dataSource.query(`DELETE FROM login_attempts`);
+    await dataSource.query(`DELETE FROM sessions`);
+    await dataSource.query(`DELETE FROM reset_tokens`);
+    await dataSource.query(`DELETE FROM users`);
+
+    // Acquire CSRF token for state-changing requests
+    const csrfRes = await request(app.getHttpServer())
+      .get("/auth/csrf-token")
+      .expect(200);
+    csrfToken = csrfRes.body.csrfToken;
+    csrfCookies = csrfRes.headers["set-cookie"];
+  });
+
+  afterAll(async () => {
+    await dataSource?.query(`DELETE FROM login_attempts`);
+    await dataSource?.query(`DELETE FROM sessions`);
+    await dataSource?.query(`DELETE FROM reset_tokens`);
+    await dataSource?.query(`DELETE FROM users`);
+    await app?.close();
+  });
+
+  const getServer = () => app.getHttpServer();
+
+  /** Attach CSRF token and cookies to a request for state-changing operations */
+  const withCsrf = (req: request.Test) =>
+    req.set("Cookie", csrfCookies).set("x-csrf-token", csrfToken);
+
+  const testUser = {
+    email: "security-e2e@example.com",
+    password: "StrongE2EPass123!",
+    name: "Security E2E User",
+  };
+
+  let registeredAccessToken: string;
+  let registeredCookies: string[];
+
+  describe("GET /health", () => {
+    it("returns 200 with status info", async () => {
+      const res = await request(getServer()).get("/health").expect(200);
+
+      expect(res.body).toMatchObject({
+        status: expect.any(String),
+        uptime: expect.any(Number),
+        memory: expect.any(Object),
+      });
+    });
+  });
+
+  describe("CSRF protection", () => {
+    it("blocks POST /auth/forgot-password without CSRF token", async () => {
+      await request(getServer())
+        .post("/auth/forgot-password")
+        .send({ email: "test@example.com" })
+        .expect(403);
+    });
+
+    it("allows POST /auth/forgot-password with valid CSRF token", async () => {
+      const res = await withCsrf(
+        request(getServer())
+          .post("/auth/forgot-password")
+          .send({ email: "unknown@example.com" }),
+      ).expect(200);
+
+      expect(res.body.message).toContain("If that email is registered");
+    });
+  });
+
+  describe("Password strength validation", () => {
+    it("rejects registration with weak password", async () => {
+      await withCsrf(
+        request(getServer())
+          .post("/auth/register")
+          .send({ email: "weak@example.com", password: "password", name: "Weak" }),
+      ).expect(400);
+    });
+
+    it("rejects registration with common sequence password", async () => {
+      await withCsrf(
+        request(getServer())
+          .post("/auth/register")
+          .send({
+            email: "weak2@example.com",
+            password: "12345678",
+            name: "Weak2",
+          }),
+      ).expect(400);
+    });
+
+    it("allows registration with strong password", async () => {
+      const res = await withCsrf(
+        request(getServer())
+          .post("/auth/register")
+          .send(testUser),
+      ).expect(201);
+
+      expect(res.body).toEqual({ accessToken: expect.any(String) });
+      registeredAccessToken = res.body.accessToken;
+      registeredCookies = res.headers["set-cookie"];
+    });
+  });
+
+  describe("Brute force lockout", () => {
+    it("locks account after 5 failed login attempts", async () => {
+      // 5 failed attempts
+      for (let i = 0; i < 5; i++) {
+        await withCsrf(
+          request(getServer())
+            .post("/auth/login")
+            .send({ email: testUser.email, password: `WrongPass${i}!` }),
+        ).expect(401);
+      }
+
+      // 6th attempt should be locked
+      const res = await withCsrf(
+        request(getServer())
+          .post("/auth/login")
+          .send({ email: testUser.email, password: testUser.password }),
+      ).expect(401);
+
+      expect(res.body.message).toContain("Account temporarily locked");
+    });
+
+    // Reset brute force state for subsequent tests
+    afterAll(async () => {
+      await dataSource?.query(
+        `DELETE FROM login_attempts WHERE "userId" IN (SELECT id FROM users WHERE email = $1)`,
+        [testUser.email],
+      );
+    });
+  });
+
+  describe("Refresh token rotation", () => {
+    const rotationUser = {
+      email: "rotation-e2e@example.com",
+      password: "R0tat1on@2024!",
+      name: "Rotation User",
+    };
+
+    let loginCookies: string[];
+    let loginAccessToken: string;
+    let rotationCsrfToken: string;
+    let rotationCsrfCookies: string[];
+
+    beforeAll(async () => {
+      const registerRes = await withCsrf(
+        request(getServer())
+          .post("/auth/register")
+          .send(rotationUser),
+      ).expect(201);
+
+      loginAccessToken = registerRes.body.accessToken;
+      loginCookies = registerRes.headers["set-cookie"];
+
+      // Get CSRF token for rotation user (uses refreshToken cookie as session identifier)
+      const csrfRes = await request(getServer())
+        .get("/auth/csrf-token")
+        .set("Cookie", loginCookies)
+        .expect(200);
+      rotationCsrfToken = csrfRes.body.csrfToken;
+      // rotationCsrfCookies contains the CSRF cookie, but we need to send both refreshToken and CSRF cookies
+    });
+
+    const withRotationCsrf = (req: request.Test) =>
+      req.set("Cookie", [...loginCookies, rotationCsrfCookies].flat().join("; ")).set("x-csrf-token", rotationCsrfToken);
+
+    it("first refresh returns new tokens", async () => {
+      const res = await withRotationCsrf(
+        request(getServer())
+          .post("/auth/refresh")
+          .set("Cookie", loginCookies),
+      ).expect(201);
+
+      expect(res.body).toEqual({ accessToken: expect.any(String) });
+      // Update cookies for next test
+      loginCookies = res.headers["set-cookie"];
+      loginAccessToken = res.body.accessToken;
+    });
+
+    it("second refresh with old cookies returns 401 (rotation)", async () => {
+      // Use the cookies from the FIRST refresh (already consumed by rotation)
+      const res = await withRotationCsrf(
+        request(getServer())
+          .post("/auth/refresh")
+          .set("Cookie", loginCookies),
+      ).expect(401);
+
+      expect(res.body.message).toContain("Session");
+    });
+
+    it("login with correct credentials after lockout reset works", async () => {
+      const res = await withCsrf(
+        request(getServer())
+          .post("/auth/login")
+          .send({ email: testUser.email, password: testUser.password }),
+      ).expect(201);
+
+      expect(res.body).toEqual({ accessToken: expect.any(String) });
+    });
+  });
+});
