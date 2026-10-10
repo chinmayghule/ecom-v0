@@ -63,6 +63,7 @@ describe("AuthService", () => {
           provide: UsersService,
           useValue: {
             findByEmail: vi.fn(),
+            findByEmailIncludingDeleted: vi.fn(),
             findById: vi.fn(),
             create: vi.fn(),
             update: vi.fn(),
@@ -224,7 +225,9 @@ describe("AuthService", () => {
   describe("register", () => {
     it("creates user and returns auth tokens", async () => {
       const user = mockUser();
-      vi.mocked(usersService.findByEmail).mockResolvedValue(null);
+      vi.mocked(usersService.findByEmailIncludingDeleted).mockResolvedValue(
+        null,
+      );
       vi.mocked(hashService.hashPassword).mockResolvedValue(
         "hashed_new_password",
       );
@@ -260,7 +263,9 @@ describe("AuthService", () => {
 
     it("throws ConflictException when email already exists", async () => {
       const existingUser = mockUser();
-      vi.mocked(usersService.findByEmail).mockResolvedValue(existingUser);
+      vi.mocked(usersService.findByEmailIncludingDeleted).mockResolvedValue(
+        existingUser,
+      );
 
       await expect(
         authService.register({
@@ -271,7 +276,9 @@ describe("AuthService", () => {
     });
 
     it("throws BadRequestException for weak password (score < 3)", async () => {
-      vi.mocked(usersService.findByEmail).mockResolvedValue(null);
+      vi.mocked(usersService.findByEmailIncludingDeleted).mockResolvedValue(
+        null,
+      );
 
       await expect(
         authService.register({

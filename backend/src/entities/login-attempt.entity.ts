@@ -5,6 +5,7 @@ import {
   Index,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
 } from "typeorm";
 import { User } from "./user.entity.js";
 
@@ -32,6 +33,9 @@ export class LoginAttempt {
   @Index()
   @ManyToOne(() => User, { onDelete: "CASCADE", nullable: true })
   user: User | null = null;
+
+  @RelationId((e: LoginAttempt) => e.user)
+  userId!: string | null;
 
   @Column({ default: 0 })
   failedAttempts!: number;

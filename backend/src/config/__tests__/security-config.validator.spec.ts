@@ -181,4 +181,48 @@ describe("SecurityConfigValidator", () => {
       ).not.toThrow();
     });
   });
+  describe("EMAIL_TRANSPORT", () => {
+    // A typo that fell through to the console transport would mean production
+    // writes reset emails to a log and delivers nothing, while every request
+    // reports success.
+    it("rejects an unrecognised transport in production", () => {
+      expect(() => build({ EMAIL_TRANSPORT: "mailpit" }).validate()).toThrow(
+        /EMAIL_TRANSPORT is "mailpit"/,
+      );
+    });
+
+    it("rejects an unrecognised transport in development too", () => {
+      expect(() =>
+        build({
+          NODE_ENV: "development",
+          EMAIL_TRANSPORT: "mailpit",
+        }).validate(),
+      ).toThrow(/EMAIL_TRANSPORT/);
+    });
+
+    it("accepts smtp and resend in production", () => {
+      for (const t of ["smtp", "resend"]) {
+        expect(() =>
+          build({ EMAIL_TRANSPORT: t, RESEND_API_KEY: "re_x" }).validate(),
+        ).not.toThrow();
+      }
+    });
+
+    it("accepts console outside production", () => {
+      expect(() =>
+        build({
+          NODE_ENV: "development",
+          EMAIL_TRANSPORT: "console",
+        }).validate(),
+      ).not.toThrow();
+    });
+
+    // Nothing is delivered by the console transport, so a locked-out user who
+    // requests a reset gets no mail and no error.
+    it("refuses console in production", () => {
+      expect(() => build({ EMAIL_TRANSPORT: "console" }).validate()).toThrow(
+        /nothing is delivered/i,
+      );
+    });
+  });
 });

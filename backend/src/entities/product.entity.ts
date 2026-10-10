@@ -5,6 +5,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { Category } from "./category.entity.js";
@@ -18,6 +19,9 @@ export class Product {
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   seller!: User;
 
+  @RelationId((product: Product) => product.seller)
+  sellerId!: string;
+
   @Column()
   name!: string;
 
@@ -26,6 +30,9 @@ export class Product {
 
   @ManyToOne(() => Category, { nullable: true, onDelete: "SET NULL" })
   category: Category | null = null;
+
+  @RelationId((product: Product) => product.category)
+  categoryId!: string | null;
 
   @Column({ type: "decimal", precision: 10, scale: 2 })
   price!: number;

@@ -4,6 +4,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { Address } from "./address.entity.js";
@@ -25,6 +26,9 @@ export class Order {
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   user!: User;
 
+  @RelationId((e: Order) => e.user)
+  userId!: string;
+
   @Column({
     type: "enum",
     enum: OrderStatus,
@@ -40,6 +44,9 @@ export class Order {
 
   @ManyToOne(() => Address, { onDelete: "SET NULL", nullable: true })
   shippingAddress: Address | null = null;
+
+  @RelationId((e: Order) => e.shippingAddress)
+  shippingAddressId!: string | null;
 
   @Column()
   placedAt!: Date;

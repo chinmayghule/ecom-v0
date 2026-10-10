@@ -21,20 +21,22 @@ services:
     depends_on:
       - postgres
 
-  # Local SMTP sink for development.
+  # Local SMTP sink — the target of the backend's default development
+  # transport.
   #
-  # The backend's DevEmailService writes password-reset URLs to stdout, which is
-  # enough to click a link by hand but not enough to inspect the rendered email.
-  # Mailpit gives the same flow a real SMTP target: set
-  #   EMAIL_TRANSPORT=smtp  (or point the mail module at it)
-  #   SMTP_HOST=localhost  SMTP_PORT=1025
-  # and every message is captured at http://localhost:8025 instead of being sent.
+  # `SmtpEmailService` renders the same HTML the Resend transport sends and
+  # hands it here, so a password reset can be read in a browser at
+  # http://localhost:8025 instead of being copied out of a log line. Mailpit
+  # keeps messages in memory and never delivers, which is what makes it safe as
+  # a default: nothing can escape the machine.
   #
-  # Deliberately NOT wired into EmailModule's transport switch. That is a code
-  # change with its own design questions (which env var decides, what the
-  # default is in production); this service is here so the address exists and
-  # the capability can be adopted deliberately. Nothing about the current
-  # console flow changes.
+  # No environment variable is required. EMAIL_TRANSPORT defaults to "smtp" in
+  # development, and SMTP_HOST/SMTP_PORT default to localhost:1025, which is
+  # where this publishes. The backend runs on the host (not in Compose), so the
+  # host address is `localhost` — inside a Compose network it would be
+  # `mailpit`.
+  #
+  # Set EMAIL_TRANSPORT=console to bypass it and log instead.
   mailpit:
     image: axllent/mailpit:latest
     restart: unless-stopped

@@ -26,7 +26,6 @@ const orderOwner = makeUser("user-1", UserRole.CUSTOMER);
 const otherUser = makeUser("user-2", UserRole.CUSTOMER);
 
 const pendingOrder = makeOrder("order-1", "user-1", "pending");
-const confirmedOrder = makeOrder("order-2", "user-1", "confirmed");
 const shippedOrder = makeOrder("order-3", "user-1", "shipped");
 const otherOrder = makeOrder("order-4", "user-2", "pending");
 
@@ -45,8 +44,11 @@ describe("OrderPolicy extended", () => {
       expect(policy.canCancel(orderOwner, pendingOrder)).toBe(true);
     });
 
-    it("allows owner to cancel confirmed order", () => {
-      expect(policy.canCancel(orderOwner, confirmedOrder)).toBe(true);
+    // There is no "confirmed" OrderStatus, so an order in that state cannot
+    // exist in the database. The old test asserted it could be cancelled,
+    // which meant the policy carried a branch for an impossible state.
+    it("denies owner cancelling a shipped order", () => {
+      expect(policy.canCancel(orderOwner, shippedOrder)).toBe(false);
     });
 
     it("denies owner from cancelling shipped order", () => {

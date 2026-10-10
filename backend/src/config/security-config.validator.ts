@@ -1,5 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import {
+  EMAIL_TRANSPORTS,
+  type EmailTransport,
+} from "../email/email.module.js";
 
 /**
  * Fails the process at boot when a production deployment is missing a security
@@ -70,10 +74,36 @@ export class SecurityConfigValidator {
       return violations;
     }
 
+    // 0. Email transport must name a transport we actually ship.
+    //
+    // Checked in every environment, not just production: an unrecognised value
+    // falls through to the console transport, which in production means
+    // password resets are written to a log and silently never delivered. A
+    // typo in a deploy variable is exactly the kind of thing that must not
+    // pass silently.
+    const transport = this.configService.get<string>("EMAIL_TRANSPORT");
+    if (
+      transport !== undefined &&
+      !EMAIL_TRANSPORTS.includes(transport as EmailTransport)
+    ) {
+      violations.push(
+        `EMAIL_TRANSPORT is "${transport}". Valid values: ${EMAIL_TRANSPORTS.join(", ")}.`,
+      );
+    }
+
     if (nodeEnv !== "production") return violations;
 
     const require_: (key: string) => string | undefined = (key) =>
       this.configService.get<string>(key);
+
+    // Production must not be running the console transport: nothing is sent,
+    // so every locked-out user who asks for a reset gets no email and no error.
+    if (transport === "console") {
+      violations.push(
+        'EMAIL_TRANSPORT is "console" in production. Nothing is delivered — ' +
+          'forgot-password would report success and send no mail. Use "resend".',
+      );
+    }
 
     // 1. Secrets must be real, not the placeholders shipped in .env.example.
     for (const key of ["JWT_SECRET", "JWT_REFRESH_SECRET"]) {

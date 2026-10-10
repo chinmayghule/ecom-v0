@@ -4,6 +4,7 @@ import {
   JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "./user.entity.js";
@@ -16,6 +17,9 @@ export class Cart {
   @OneToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn()
   user!: User;
+
+  @RelationId((e: Cart) => e.user)
+  userId!: string;
 
   @CreateDateColumn()
   createdAt!: Date;

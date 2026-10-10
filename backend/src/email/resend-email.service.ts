@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { OnModuleInit } from "@nestjs/common";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -10,12 +7,7 @@ import type {
   EmailService,
   PasswordResetEmail,
 } from "./interfaces/email-service.interface.js";
-
-// Resolved from this module's own location, not from process.cwd(). The file
-// sits at <dist|src>/email/templates/password-reset.html in both trees —
-// `nest-cli.json` copies `email/templates/**` into `dist/` as an asset — so
-// the relative path is identical in development and in the built image.
-const TEMPLATE_DIR = join(dirname(fileURLToPath(import.meta.url)), "templates");
+import { renderPasswordReset } from "./template.renderer.js";
 
 /**
  * Production transport: renders the HTML template and hands it to Resend.
@@ -71,10 +63,7 @@ export class ResendEmailService implements EmailService, OnModuleInit {
       from: this.from,
       to: email.to,
       subject: "Password Reset - Ecom",
-      html: this.render("password-reset", {
-        RESET_URL: email.resetUrl,
-        EXPIRY_HOURS: String(email.expiresInHours),
-      }),
+      html: renderPasswordReset(email.resetUrl, email.expiresInHours),
     });
   }
 
@@ -82,18 +71,6 @@ export class ResendEmailService implements EmailService, OnModuleInit {
     return (
       this.configService.get<string>("RESEND_FROM_EMAIL") ??
       "noreply@example.com"
-    );
-  }
-
-  /**
-   * Placeholder substitution via regex rather than string interpolation, so
-   * the substituted values are inserted literally — a reset URL containing `$&`
-   * or `$1` must not be expanded as a `String.replace` pattern.
-   */
-  private render(name: string, variables: Record<string, string>): string {
-    const template = readFileSync(join(TEMPLATE_DIR, `${name}.html`), "utf-8");
-    return template.replace(/\{\{(\w+)\}\}/g, (match, key: string) =>
-      key in variables ? variables[key] : match,
     );
   }
 }

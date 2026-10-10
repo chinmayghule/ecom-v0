@@ -5,6 +5,7 @@ import {
   JoinColumn,
   OneToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { Product } from "./product.entity.js";
@@ -17,6 +18,9 @@ export class Inventory {
   @OneToOne(() => Product, { onDelete: "CASCADE" })
   @JoinColumn()
   product!: Product;
+
+  @RelationId((e: Inventory) => e.product)
+  productId!: string;
 
   @Column({ default: 0 })
   quantity!: number;

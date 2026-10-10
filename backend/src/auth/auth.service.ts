@@ -75,7 +75,14 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
-    const existing = await this.usersService.findByEmail(dto.email);
+    // Deliberately `findByEmailIncludingDeleted`, not `findByEmail`. The
+    // unique constraint on `users.email` covers soft-deleted rows too, so
+    // checking only live ones lets the INSERT fail on the constraint instead —
+    // a 500 where the honest answer is a 409. The message is the same either
+    // way so this cannot be used to probe which addresses exist.
+    const existing = await this.usersService.findByEmailIncludingDeleted(
+      dto.email,
+    );
     if (existing) throw new ConflictException("Email already in use");
 
     // Service-level password strength check with user-specific inputs

@@ -5,6 +5,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "./user.entity.js";
@@ -19,6 +20,9 @@ export class Address {
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   user!: User;
+
+  @RelationId((e: Address) => e.user)
+  userId!: string;
 
   @Column()
   addressLine1!: string;

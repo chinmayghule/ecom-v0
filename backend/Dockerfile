@@ -7,11 +7,12 @@
 #
 # The build context must be the root because three files this image needs only
 # exist there — pnpm-lock.yaml, pnpm-workspace.yaml and
-# patches/zxcvbn-ts@2.2.1.patch. backend/pnpm-lock.yaml is a stale pre-monorepo
-# leftover that still resolves jest/eslint/prettier, which backend/package.json
-# no longer declares, so `pnpm install --frozen-lockfile` inside backend/ cannot
-# resolve the current dependency set. The patch is also required: it rewrites
-# zxcvbn-ts's extensionless ESM imports, without which
+# patches/zxcvbn-ts@2.2.1.patch. There is deliberately no backend/pnpm-lock.yaml:
+# a pre-monorepo leftover that still resolved jest/eslint/prettier made
+# `pnpm install --frozen-lockfile` inside backend/ fail outright, which is the
+# error you get from building with the wrong context.
+# The patch is also required: it rewrites zxcvbn-ts's extensionless ESM
+# imports, without which
 # `import { zxcvbn } from "zxcvbn-ts"` throws ERR_MODULE_NOT_FOUND at runtime.
 
 ARG NODE_VERSION=22
