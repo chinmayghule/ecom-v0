@@ -1,12 +1,12 @@
 # ecom-v0
 
-A multi-phase engineering project that evolves from a deployed monolith through hardening into a full microservices migration. Designed to demonstrate depth across the full stack — backend, frontend, architecture, deployment, and observability.
+A multi-stage engineering project that evolves from a deployed monolith through hardening into a full microservices migration. Designed to demonstrate depth across the full stack — backend, frontend, architecture, deployment, and observability.
 
 `ecom_project_master.md` is the source of truth for scope and architecture. This README describes the plan at a glance and the current state of the build.
 
-**Current phase:** Phase 1 of 5 — Complete Monolith (in progress)
+**Current stage:** Stage 1 of 5 — Complete Monolith (in progress)
 
-Phases 1–3 are the core. Phases 4–5 are optional extensions.
+Stages 1–3 are the core. Stages 4–5 are optional extensions.
 
 ---
 
@@ -78,9 +78,9 @@ The server refuses to start in production unless `NODE_ENV`, real secrets, match
 
 ### Vision
 
-This project exists to demonstrate that a single developer can design, build, stress-test, deploy, and evolve a real full-stack web system. It tells a coherent story across five phases:
+This project exists to demonstrate that a single developer can design, build, stress-test, deploy, and evolve a real full-stack web system. It tells a coherent story across five stages:
 
-| Phase | What it delivers | Architecture | Deployment | Status |
+| Stage | What it delivers | Architecture | Deployment | Status |
 |---|---|---|---|---|
 | 1 | Complete monolith — backend API, Next.js frontend, Storybook, database, CI/CD, deployment | Monolith (NestJS) | Render + Vercel + Neon | **Core** |
 | 2 | Hardened monolith — load testing, performance diagnosis, bottleneck fixes | Monolith | Render + Vercel + Neon | **Core** |
@@ -88,13 +88,13 @@ This project exists to demonstrate that a single developer can design, build, st
 | 4 | Native mobile client — React Native via Expo against the same API | Microservices | EAS Build (free tier) | Optional |
 | 5 | Production-grade microservices — distributed tracing, per-service observability | Microservices | GCP | Optional |
 
-The architecture transforms at Phase 3 — from a single deployable NestJS app to independently deployable services (auth, catalog, orders, API gateway) communicating via GCP Pub/Sub. This transition surfaces the interesting distributed systems problems: cross-service transactions, eventual consistency, service discovery, and observability at scale.
+The architecture transforms at Stage 3 — from a single deployable NestJS app to independently deployable services (auth, catalog, orders, API gateway) communicating via GCP Pub/Sub. This transition surfaces the interesting distributed systems problems: cross-service transactions, eventual consistency, service discovery, and observability at scale.
 
-Everything up to Phase 3 is free-tier hosted and completes the core story. Phases 4 and 5 deepen it if time allows.
+Everything up to Stage 3 is free-tier hosted and completes the core story. Stages 4 and 5 deepen it if time allows.
 
 ### Technology Stack
 
-**Backend** (all phases)
+**Backend** (all stages)
 
 | Concern | Choice |
 |---|---|
@@ -110,7 +110,7 @@ Everything up to Phase 3 is free-tier hosted and completes the core story. Phase
 
 **Frontend** (added progressively)
 
-| Concern | Web — Next.js (Phase 1+) | Mobile — React Native / Expo (Phase 4+, optional) |
+| Concern | Web — Next.js (Stage 1+) | Mobile — React Native / Expo (Stage 4+, optional) |
 |---|---|---|
 | State management | TanStack Query | TanStack Query |
 | Styling | Tailwind CSS | NativeWind |
@@ -123,7 +123,7 @@ Everything up to Phase 3 is free-tier hosted and completes the core story. Phase
 
 | Concern | Choice |
 |---|---|
-| Database | PostgreSQL (all phases) |
+| Database | PostgreSQL (all stages) |
 | Migrations | TypeORM |
 | Local GUI | pgweb |
 
@@ -134,12 +134,12 @@ Everything up to Phase 3 is free-tier hosted and completes the core story. Phase
 | Containerization | Docker, multi-stage Dockerfiles |
 | Local orchestration | Docker Compose v2 |
 | CI/CD | GitHub Actions |
-| Compute (Phases 1–2) | Render (free tier Web Service) |
-| Database (Phases 1–2) | Neon serverless PostgreSQL |
+| Compute (Stages 1–2) | Render (free tier Web Service) |
+| Database (Stages 1–2) | Neon serverless PostgreSQL |
 | Frontend hosting | Vercel (free tier) |
-| Compute (Phases 3–5) | GCP Cloud Run (scales to zero) |
-| Messaging (Phase 3+) | GCP Pub/Sub |
-| Mobile builds (Phase 4+, optional) | Expo EAS Build (free tier) |
+| Compute (Stages 3–5) | GCP Cloud Run (scales to zero) |
+| Messaging (Stage 3+) | GCP Pub/Sub |
+| Mobile builds (Stage 4+, optional) | Expo EAS Build (free tier) |
 
 **Observability**
 
@@ -147,8 +147,8 @@ Everything up to Phase 3 is free-tier hosted and completes the core story. Phase
 |---|---|
 | Structured logging | Pino |
 | Log ingestion + uptime | BetterStack |
-| Cloud monitoring | None in Phases 1–2 — BetterStack covers uptime |
-| Distributed tracing (Phase 5, optional) | OpenTelemetry |
+| Cloud monitoring | None in Stages 1–2 — BetterStack covers uptime |
+| Distributed tracing (Stage 5, optional) | OpenTelemetry |
 
 **Testing**
 
@@ -156,9 +156,9 @@ Everything up to Phase 3 is free-tier hosted and completes the core story. Phase
 |---|---|
 | Unit + integration | Vitest |
 | E2E API | Supertest |
-| E2E frontend (Phase 1+) | Playwright |
-| Component (Phase 1+) | React Testing Library |
-| Load testing (Phase 2) | k6 |
+| E2E frontend (Stage 1+) | Playwright |
+| Component (Stage 1+) | React Testing Library |
+| Load testing (Stage 2) | k6 |
 
 **Tooling**
 
@@ -167,32 +167,37 @@ Everything up to Phase 3 is free-tier hosted and completes the core story. Phase
 | Linting + formatting | Biome |
 | Pre-commit hooks | Lefthook |
 | Inline code docs | TSDoc |
-| Docs site (Phase 1+) | TypeDoc + Starlight |
+| Docs site (Stage 1+) | TypeDoc + Starlight |
 
-### Current implementation (Phase 1)
+### Current implementation (Stage 1)
 
-The backend monolith is in progress. Phase 01 (security hardening and foundation) is complete.
+The backend monolith is in progress. GSD Phase 01 (security hardening and foundation)
+is complete, and GSD Phase 02 (product catalog) is partially built.
 
 **Built:**
 
 - **Auth module** — registration, login, JWT access/refresh token rotation, multi-session management, device tracking, RBAC (`customer` / `seller` / `admin`), policy-based resource authorization, password reset with hashed single-use tokens, brute-force lockout
 - **User module** — CRUD with soft-delete
+- **Catalog module** — products and categories CRUD, pagination, name search, seller-ownership enforcement, optional auth so a storefront stays publicly browsable
 - **Database schema** — entities for the full e-commerce domain: users, sessions, login attempts, reset tokens, products, categories, inventory, carts, orders, addresses, seller profiles
 - **Foundations** — Pino structured logging, `/health` endpoint with DB connectivity, email delivery for password reset, environment validation, Argon2id password hashing at OWASP memory cost
-- **Testing** — 217 unit tests across 27 spec files, plus 21 integration tests against a real Postgres, both wired into CI. E2E specs exist but are not yet wired in
+- **Testing** — unit, integration and E2E suites across auth, users, catalog and email, wired into CI alongside lint, build, and a migration check
 - **Lefthook hooks** — lint pre-commit, lint + build + test coverage pre-push
-- **CI/CD** — GitHub Actions pipeline (lint, build, unit tests on pull requests)
+- **CI/CD** — GitHub Actions pipeline (lint, build, unit + integration + E2E tests, migration check on pull requests)
 
-**Still to build in Phase 1:**
+**Still to build in Stage 1:**
 
-- Product catalog endpoints, cart & checkout flow
-- Next.js frontend and Storybook component documentation
-- OpenAPI spec served at `/api`, and the TypeDoc + Starlight documentation site
-- TSDoc annotations across the backend
-- Seed script, Dockerfiles, BetterStack observability
+- Inventory management — the entity exists but nothing manages stock yet
+- Cart, addresses, orders and checkout
+- Seller profile and admin management surfaces
+- Data-integrity pass from a code review: DB transactions, FK indexes, optimistic locking on inventory, global exception filter
+- OpenAPI spec served at `/api`, TSDoc annotations, and the TypeDoc + Starlight documentation site
+- Seed script, multi-stage Dockerfiles, BetterStack observability
+- Next.js frontend, orval typed client, shadcn/ui and Storybook
 - Deployment to Render + Vercel + Neon
 
-Coverage figures move as the suite grows — CI output is the current source of truth rather than any number recorded here.
+Progress is tracked per GSD phase in `.planning/ROADMAP.md`. Coverage figures move as
+the suite grows — CI output is the current source of truth rather than any number recorded here.
 
 ### CI/CD & Deployment Strategy
 
@@ -200,4 +205,4 @@ Coverage figures move as the suite grows — CI output is the current source of 
 
 **Lefthook** enforces the same gates locally before push — Biome lint on pre-commit, and full lint + build + test coverage on pre-push.
 
-The monolith (Phases 1–2) deploys to Render (backend) + Vercel (frontend) + Neon (PostgreSQL), all free tier. The microservices (Phases 3–5) each get independent Cloud Run services on GCP with per-service build pipelines.
+The monolith (Stages 1–2) deploys to Render (backend) + Vercel (frontend) + Neon (PostgreSQL), all free tier. The microservices (Stages 3–5) each get independent Cloud Run services on GCP with per-service build pipelines.

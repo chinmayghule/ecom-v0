@@ -21,8 +21,14 @@
 *.log
 
 # ── Agent & tool state: scratch for one machine, never committed ─────────────
-# GSD planning state (roadmap, phase plans, UAT records) — local by design.
-.planning/
+# NOTE: .planning/ is deliberately NOT in this list. It was fully ignored until
+# 2026-10-10, when that caused the loss of ROADMAP.md, STATE.md, PROJECT.md and two
+# phase records with no recovery path — a gitignored directory is unprotected, not
+# merely untracked. `git reset --hard`, `git clean -fd`, a fresh clone, or a new
+# machine all remove it silently. The GSD planning record is project documentation
+# (roadmap, decisions, plans, verification evidence) and belongs in the repo, the
+# same way ADRs do. Only genuinely ephemeral session files stay ignored, below.
+#
 # PAM — internal tooling; self-documented as "lives entirely in .pam/".
 .pam/
 # Dated AI code-review reports.
@@ -37,6 +43,17 @@ graphify-out/
 .vscode/
 # Parked dead code. Kept locally for reference; never shipped or built.
 archive/
+
+# ── Ephemeral GSD session state ──────────────────────────────────────────────
+# The only planning files that stay ignored: transient markers a single session
+# writes and reads within itself. They record "where I was mid-thought", which is
+# meaningless to anyone else and goes stale immediately. Everything else in
+# .planning/ is a durable project artifact and is tracked.
+.planning/.continue-here.md
+.planning/**/.continue-here.md
+.planning/HANDOFF*.md
+.planning/**/*HANDOFF*.md
+.planning/**/*handoff*.json
 
 # ── Dependencies ─────────────────────────────────────────────────────────────
 node_modules

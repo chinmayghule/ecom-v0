@@ -1,8 +1,10 @@
 # Git Conventions
 
-## Commit style
+Commit-message format and branch naming. How a commit is *written* is in
+`COMMIT_STYLE.md`; where work goes and how it lands is in `GIT_WORKFLOW.md`.
+This file is the reference for the format rules themselves.
 
-This project follows **Conventional Commits** (`<type>(<scope>): <description>`).
+Format: **Conventional Commits** — `<type>(<scope>): <description>`.
 
 ## Types
 
@@ -40,10 +42,6 @@ docs: replace stale project brief with ecom_project_master.md
 
 Append `!` after the type/scope: `feat!`: `feat(auth)!: drop support for legacy tokens`.
 
-## PR merges
-
-Squash-merge into main. The squashed commit message becomes the merge title.
-
 ## Scope rule
 
 Do not use a scope when the change touches multiple packages or is cross-cutting. Use a scope when the change is confined to one module.
@@ -60,3 +58,19 @@ release/v2.1.0
 ```
 
 Do NOT use tool-specific prefixes (`gsd/`, `claude/`, etc.).
+
+GSD phases use `feature/<NN>-<slug>`, where `NN` matches `.planning/phases/<NN>-<name>/`.
+
+## `[AI]` prefix
+
+**Prefix every GitHub comment you author with `[AI]`** — PR descriptions, review
+comments, issue comments, and commit messages.
+
+```
+[AI] fix(gsd): recover the planning state and stop it being lost again
+[AI] Addressed the RCCs; the false claims were in CONCERNS.md, not the code.
+```
+
+The prefix makes authorship unambiguous, so a later reader can tell what was written
+by a person and what was written by an agent without reconstructing it from git.
+It is also what makes an agent-authored comment auditable after the fact.

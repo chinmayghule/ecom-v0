@@ -6,7 +6,7 @@ This is a **pnpm monorepo** (backend, frontend, shared) for a resume-building e-
 
 ---
 
-## Phases
+## GSD Workflow
 
 Build order: `backend → frontend → CI/CD/deploy`. Monolith first, no micro-architecture.
 
@@ -93,13 +93,32 @@ Next.js with App Router, TypeScript, Tailwind CSS. See `./ecom_project_master.md
 
 If an agent sees a decision that is poor practice, a code smell, or a security issue, **flag it and explain the better approach**. The user wants to learn industry standards, not just ship code.
 
-### Commit style
+### Git conventions
 
-Follow `./GIT_CONVENTIONS.md`.
+| File | Covers |
+|---|---|
+| `./COMMIT_STYLE.md` | how a commit message is written |
+| `./GIT_CONVENTIONS.md` | commit-message format and branch naming |
+| `./GIT_WORKFLOW.md` | branch flow, merge strategy, review rules, CI, protection settings |
+| `./GSD_WORKFLOW.md` | planning state: what is tracked, phase↔stage mapping, `pnpm gsd:doctor` |
 
-### Branch naming
+**Do not delete `.planning/`, or add it to `.gitignore`.** A gitignored directory
+is unprotected — `git reset --hard`, `git clean -fd`, or a fresh clone delete it
+with no recovery path. `guard-planning-tracked` blocks this; see
+`LOCAL_ONLY_FILES.md`.
 
-Follow `./GIT_CONVENTIONS.md`.
+Never push to `origin/main`, never delete `origin/dev`, and never merge into
+`origin/dev` without a human approving review — an agent-authored PR is not
+self-reviewed.
+
+GitHub cannot record that review: the API rejects self-approval outright
+(`422 Review Can not approve your own pull request`), so both branches sit at
+zero required approvals and the review happens in conversation. Wait to be told
+explicitly before merging anything — that instruction *is* the approval. A PR
+showing `BLOCKED` on review is expected on `main`; on `dev` it should not be, and
+if it is, the protection settings have drifted from `GIT_WORKFLOW.md`.
+
+Branch names follow Conventional Branch: `feature/`, `fix/`, `chore/`, `docs/`, `release/` plus a kebab-case description. No tool-specific prefixes. GSD phases use `feature/<NN>-<slug>`.
 
 ### Adding deps
 
