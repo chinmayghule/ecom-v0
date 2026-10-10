@@ -6,7 +6,7 @@ This is a **pnpm monorepo** (backend, frontend, shared) for a resume-building e-
 
 ---
 
-## Phases
+## GSD Workflow
 
 Build order: `backend → frontend → CI/CD/deploy`. Monolith first, no micro-architecture.
 
@@ -100,7 +100,7 @@ If an agent sees a decision that is poor practice, a code smell, or a security i
 | `./COMMIT_STYLE.md` | how a commit message is written |
 | `./GIT_CONVENTIONS.md` | commit-message format and branch naming |
 | `./GIT_WORKFLOW.md` | branch flow, merge strategy, review rules, CI, protection settings |
-| `./GSD_WORKFLOW.md` | planning state: what is tracked, phase↔master-doc mapping, `pnpm gsd:doctor` |
+| `./GSD_WORKFLOW.md` | planning state: what is tracked, phase↔stage mapping, `pnpm gsd:doctor` |
 
 **Do not add `.planning/` to `.gitignore`.** The planning record is project
 documentation, not scratch, and it was lost on 2026-10-10 precisely because it

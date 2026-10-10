@@ -85,14 +85,15 @@ unrelated commit; in CI there is no unrelated commit to protect.
 pnpm gsd:doctor          # or: scripts/gsd-doctor.sh
 ```
 
-Six checks:
+Seven checks:
 
 1. **Structure** — the required files exist
 2. **Protection** — they are tracked and not ignored
 3. **Roadmap vs disk** — every roadmap phase has a directory, and every directory is in the roadmap
 4. **STATE.md freshness** — it is not stale, and its completed-phase count matches the roadmap's checkmarks
 5. **Checkpoints** — no unresolved `.continue-here.md`
-6. **Records** — completed phases have summaries for their plans
+6. **Orphaned context** — a CONTEXT with no PLAN, i.e. work scoped but never executed
+7. **Records** — completed phases have summaries for their plans
 
 Run it at the start of a session and after any bulk filesystem operation. Exit
 code 1 means something needs fixing.
@@ -107,32 +108,46 @@ is more dangerous than a missing one, because it is believed. The copy recovered
 
 This is the thing most likely to be got wrong by a future agent.
 
-`ecom_project_master.md` defines **5 macro-phases** for the whole project. GSD works
-on a finer grain, and its phases are **not** the same as the master doc's phases.
+`ecom_project_master.md` defines **5 macro-stages** for the whole project. GSD works
+on a finer grain, and its phases are **not** the same thing.
+
+**"Phase" means GSD phase. Always.** The master document says "stage". This was not
+always true — both used "phase" until 2026-10-10, and the collision caused a wrong
+conclusion before it was noticed. The master document carries a table comparing the
+two in its §2.2.
 
 ```
 Master doc  ──▶  GSD milestones
-  Phase 1  Complete Monolith        ──▶  milestone v2.0  (current — 8 sub-phases)
-  Phase 2  Hardened Monolith        ──▶  future milestone
-  Phase 3  Microservices            ──▶  future milestone
-  Phase 4  Mobile Client (optional) ──▶  future milestone
-  Phase 5  Production (optional)    ──▶  future milestone
+  Stage 1  Complete Monolith        ──▶  current milestone (11 phases)
+  Stage 2  Hardened Monolith        ──▶  future milestone
+  Stage 3  Microservices            ──▶  future milestone
+  Stage 4  Mobile Client (optional) ──▶  future milestone
+  Stage 5  Production (optional)    ──▶  future milestone
 
-Milestone v2.0  ──▶  GSD phases 01–08
+Stage 1  ──▶  GSD phases 01–11
   01 Security Hardening & Foundation   ✅
-  02 Product Catalog                    ✅
-  03 Cart, Addresses & Checkout         ○  ← current
-  04 Seller & Admin Features
-  05 Database Seeds & Docker Packaging
-  06 API Documentation & Docs Site
-  07 Frontend & Component Library
-  08 Observability & CI/CD Deployment
+  02 Product Catalog                    ◐  partial
+  03 Data Integrity & Code Quality      ○  ← current
+  04 Catalog Completion
+  05 Cart & Addresses
+  06 Orders & Checkout
+  07 Seller & Admin Management
+  08 API Documentation & Auth Hardening
+  09 Seeds & Docker Packaging
+  10 Frontend & Component Library
+  11 Observability & Deployment
 ```
 
-So: **when the master doc changes phase structure, the GSD roadmap must be
-re-derived, not patched.** The old roadmap decomposed a pre-#9 draft of the master
-doc and predated the restructure that moved Storybook into Phase 1 and pinned
-deployment to Render + Vercel + Neon.
+So: **when the master doc changes stage structure, the GSD roadmap must be re-derived,
+not patched.**
+
+Two things make that re-derivation reliable, both learned the hard way:
+
+- **`WORK-INVENTORY.md` holds the tasks, `ROADMAP.md` holds the grouping.** Re-derive
+  the grouping without re-deciding what work exists.
+- **Derive from what the code needs, not from what a commit says.** The first rebuilt
+  roadmap marked Phase 02 complete because PR #12 read like a finished catalog. It was
+  not — inventory had an entity and no code at all. Read the modules, not the messages.
 
 ---
 

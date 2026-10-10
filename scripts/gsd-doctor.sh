@@ -165,10 +165,53 @@ else
   ok "no .continue-here.md checkpoints"
 fi
 
-# ── 6. Incomplete work in finished phases ──────────────────────────────────────
+# ── 6. Orphaned context — discussed but never planned ──────────────────────────
+# The blind spot that hid 01B.
+#
+# 01B-CONTEXT.md was written on 2026-06-19 with 17 prioritised items and an
+# execution order. It was never planned and never executed. Because the phase it
+# lived inside was marked complete, and because this script originally only
+# looked for "plans without summaries", nothing reported it — an entire
+# unexecuted remediation backlog sat invisible while the doctor said "all clear".
+#
+# The shape is a CONTEXT with no PLAN beside it: a discussion that never became
+# work. That is a different failure from an unfinished plan and needs its own check.
+section "6. No context was left unexecuted"
+for d in .planning/phases/*/; do
+  [ -d "$d" ] || continue
+  dir=$(basename "$d")
+
+  for ctx in "$d"*-CONTEXT.md; do
+    [ -f "$ctx" ] || continue
+    base=$(basename "$ctx" -CONTEXT.md)
+
+    # Match by name prefix, NOT by "some plan exists in the directory". Phase 01
+    # has four wave plans (01-01 … 01-04) which have nothing to do with 01B's 17
+    # remediation items — a directory-level check credits 01B with work that does
+    # not cover it, which is the exact blind spot this check exists to close.
+    # A context named `01B` is covered only by plans named `01B-*`.
+    covered=$(find "$d" -maxdepth 1 -name "$base-*PLAN.md" 2>/dev/null | wc -l | tr -d ' ')
+
+    if [ "$covered" -gt 0 ]; then
+      ok "$dir $base is covered by $covered plan(s)"
+    else
+      # Severity depends on whether the roadmap still intends the work.
+      num=$(echo "$dir" | grep -oE '^[0-9]+')
+      if [ -n "$num" ] && grep -qE "^- \[[xX]\][[:space:]]*\*\*Phase[[:space:]]+$((10#$num)):" \
+           .planning/ROADMAP.md 2>/dev/null; then
+        fail "$dir $base-CONTEXT.md was scoped but never planned — and its phase is marked complete"
+        printf '      the work will never be picked up again\n' >&2
+      else
+        warn "$dir $base-CONTEXT.md has no plan yet — scoped but not planned"
+      fi
+    fi
+  done
+done
+
+# ── 7. Completed phases have records ───────────────────────────────────────────
 # A phase marked complete whose plans lack summaries means work shipped without
 # a record.
-section "6. Completed phases have records"
+section "7. Completed phases have records"
 for d in .planning/phases/*/; do
   [ -d "$d" ] || continue
   dir=$(basename "$d")
