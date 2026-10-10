@@ -37,6 +37,25 @@ jobs:
             exit 1
           fi
 
+      # The planning record must stay in the repo. Runs here because a
+      # `--no-verify` push bypasses guard-planning-tracked locally, and on
+      # 2026-10-10 this exact check would have failed: `.planning/` was
+      # gitignored in full and the roadmap, state, and project files were lost
+      # with no recovery path. Mirrors the pre-commit guard of the same name.
+      - name: Guard planning state
+        run: |
+          failed=0
+          for f in .planning/ROADMAP.md .planning/STATE.md .planning/PROJECT.md; do
+            if [ ! -e "$f" ]; then
+              echo "::error::$f is missing from the repository."
+              failed=1
+            elif ! git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+              echo "::error::$f is not tracked."
+              failed=1
+            fi
+          done
+          exit $failed
+
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
