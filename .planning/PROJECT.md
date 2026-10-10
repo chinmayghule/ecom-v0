@@ -8,9 +8,11 @@ A full-stack e-commerce platform demonstrating end-to-end software engineering �
 
 A complete, deployed, demoable e-commerce system that proves full-stack competence — auth, catalog, cart, checkout, frontend, deployment, and documentation all working together.
 
-## Current Milestone: v2.0 Complete Monolith
+## Current Milestone: Stage 1 — Complete Monolith
 
-**Goal:** Complete everything remaining from Phase 1 of the master plan — all backend modules (product catalog, cart, orders, addresses, seller/admin features), database seeds, OpenAPI/Swagger docs, TypeDoc + Starlight documentation site, Pino logging with BetterStack, Next.js frontend with orval typed client, CI/CD via GitHub Actions, and deploy on free-tier infrastructure.
+**Goal:** Complete everything remaining from **Stage 1** of the master document — all backend modules (catalog completion, cart, orders, addresses, seller/admin features), data integrity remediation, database seeds, OpenAPI/Swagger docs, TypeDoc + Starlight documentation site, Pino logging with BetterStack, Next.js frontend with orval typed client, CI/CD via GitHub Actions, and deploy on free-tier infrastructure.
+
+Phase breakdown lives in `ROADMAP.md`; task-level detail in `WORK-INVENTORY.md`.
 
 **Target features:**
 - Security hardening (review fixes: refresh token hashing/rotation, reset token optimization, policy fixes)
@@ -44,19 +46,35 @@ A complete, deployed, demoable e-commerce system that proves full-stack competen
 
 ### Out of Scope
 
-- Payment integration — deferred to v3.0
-- Massive seed data (50k products, 10k users) — Phase 2
-- Load testing with k6 — Phase 2
-- Nuxt.js frontend — Phase 3
-- Angular frontend — Phase 3
-- Microservices decomposition — Phase 4
-- AI features — Post Phase 5 only
+Scoped against the current master document. **Stage**, not phase — see `ROADMAP.md`.
+
+- Payment provider integration — deferred past Stage 1
+- Massive seed data (50k products, 10k users) — Stage 2
+- Load testing with k6 — Stage 2
+- Microservices decomposition, GCP Pub/Sub, API gateway — Stage 3
+- React Native mobile client — Stage 4 (optional)
+- Distributed tracing, per-service observability — Stage 5 (optional)
+- AI features — post Stage 3
+
+> **Dropped on 2026-10-10, and the reasoning is recorded rather than deleted:**
+> the original list deferred "Nuxt.js frontend" and "Angular frontend" to Phase 3 and
+> "Microservices decomposition" to Phase 4. The restructure in #9 reordered the plan so
+> microservices comes *before* client work, and dropped the three-frontend framing
+> entirely — Nuxt and Angular are no longer in the plan at all. Only Next.js ships in
+> Stage 1, with React Native as the optional Stage 4.
 
 ## Context
 
-Brownfield project. Auth module (JWT+RBAC, session management, password reset, policy-based authorization) is complete with 101 unit + 30 E2E tests at >96% coverage. All entity definitions exist. An initial migration exists. Security review found critical gaps (plaintext refresh tokens, no rotation) that must be fixed before building new features.
+Brownfield project. The auth module (JWT+RBAC, session management, password reset,
+policy-based authorization) is complete and hardened: the critical gaps found by review
+— plaintext refresh tokens, no rotation, soft-deleted users able to authenticate, a
+refresh-token race — were fixed inside GSD Phase 01. All entity definitions exist, but
+five domain areas (inventory, cart, order, address, seller-profile) have **entities and
+no implementation**. A security review's code-quality findings remain unaddressed and are
+scoped as GSD Phase 03.
 
-The project follows a monolith architecture through Phase 3. Deploy target changed from AWS (per master plan) to free-tier: Vercel + Render + Neon.
+The project follows a monolith architecture through Stage 2. Deploy target is free-tier:
+Vercel + Render + Neon.
 
 ## Constraints
 
@@ -76,15 +94,15 @@ The project follows a monolith architecture through Phase 3. Deploy target chang
 | orval for typed frontend client | Auto-generates from OpenAPI spec, keeps frontend/backend in sync | ✓ Good |
 | Vercel + Render + Neon over AWS | Free-tier requirement, simpler setup | — Pending |
 | Resend for email | Generous free tier, simple API | — Pending |
-| No payment in v2.0 | Reduces scope, payment is complex | — Pending |
+| No payment in Stage 1 | Reduces scope, payment is complex | — Pending |
 
 ## Evolution
 
-This document evolves at phase transitions and milestone boundaries.
+This document evolves at stage transitions and milestone boundaries.
 
-**After each phase transition** (via `/gsd-transition`):
+**After each stage transition** (via `/gsd-complete-milestone`):
 1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
+2. Requirements validated? → Move to Validated with stage reference
 3. New requirements emerged? → Add to Active
 4. Decisions to log? → Add to Key Decisions
 5. "What This Is" still accurate? → Update if drifted
@@ -96,4 +114,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-15 after milestone v2.0 initialization*
+*Last updated: 2026-10-10 — restored from git and reconciled with the current master document. Stage terminology throughout; Out of Scope corrected against the #9 restructure.*

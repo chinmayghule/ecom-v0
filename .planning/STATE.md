@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.0
-milestone_name: Complete Monolith
-status: Phase 02 complete — ready to plan Phase 03 (Cart, Addresses & Checkout)
-stopped_at: Milestone roadmap rebuilt after planning-state loss
+milestone: stage-1-complete-monolith
+milestone_name: Stage 1 — Complete Monolith
+status: Roadmap re-derived — Phase 03 (Data Integrity) next
+stopped_at: Roadmap rebuilt and re-structured after planning-state loss
 last_updated: "2026-10-10T00:00:00.000Z"
-last_activity: 2026-10-10 — Rebuilt ROADMAP.md and STATE.md from ecom_project_master.md and git history
+last_activity: 2026-10-10 — De-structured outstanding work, re-derived the roadmap, resolved the stage/phase naming collision
 progress:
-  total_phases: 8
-  completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
-  percent: 25
+  total_phases: 11
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 1
+  percent: 9
 ---
 
 # Project State
@@ -20,66 +20,100 @@ progress:
 
 ## Current Position
 
-- **Phase:** 03 — Cart, Addresses & Checkout (not yet planned)
-- **Status:** Roadmap rebuilt. Phases 01 and 02 are shipped and verified.
-- **Next action:** `/gsd-discuss-phase 3`
+- **Next:** Phase 03 — Data Integrity & Code Quality
+- **Status:** Roadmap re-derived from the master document. Phase 01 complete, Phase 02 partial.
+- **Next action:** `/gsd-plan-phase 3`
+
+## Terminology
+
+**Stage** = `ecom_project_master.md` macro-stage (Stage 1–5), fixed for the life of
+the project. **Phase** = GSD implementation phase (`.planning/ROADMAP.md`), re-derived
+whenever the master document changes.
+
+Renamed on 2026-10-10. The two numbering schemes had collided, and the collision had
+already caused a wrong conclusion: an old roadmap numbered GSD phases 01–08 against
+what was also called "Phase 1", which implied the numbers were comparable. They were not.
 
 ## Phase Progress
 
-| Phase | Name | Status | Notes |
-|-------|------|--------|-------|
-| 01 | Security Hardening & Foundation | ✅ complete | Merged #6. UAT 8/8. |
-| 02 | Product Catalog | ✅ complete | Merged #12. No UAT record — see `02-CONTEXT.md`. |
-| 03 | Cart, Addresses & Checkout | ○ not started | **Next up** |
-| 04 | Seller & Admin Features | ○ not started | |
-| 05 | Database Seeds & Docker Packaging | ○ not started | |
-| 06 | API Documentation & Docs Site | ○ not started | Fix fail-open auth here |
-| 07 | Frontend & Component Library | ○ not started | |
-| 08 | Observability & CI/CD Deployment | ○ not started | |
+| Phase | Name | Status |
+|---|---|---|
+| 01 | Security Hardening & Foundation | ✅ complete — merged #6, UAT 8/8 |
+| 02 | Product Catalog | ◐ partial — merged #12; inventory not managed |
+| 03 | Data Integrity & Code Quality | ○ **next** — 16 of 18 review items outstanding |
+| 04 | Catalog Completion | ○ not started |
+| 05 | Cart & Addresses | ○ not started |
+| 06 | Orders & Checkout | ○ not started |
+| 07 | Seller & Admin Management | ○ not started |
+| 08 | API Documentation & Auth Hardening | ○ not started |
+| 09 | Seeds & Docker Packaging | ○ not started |
+| 10 | Frontend & Component Library | ○ not started |
+| 11 | Observability & Deployment | ○ not started |
 
-## Recovery Notice — read this first
+## Documents
+
+| File | Holds |
+|---|---|
+| `WORK-INVENTORY.md` | Every outstanding unit of work, flat, with source and dependencies |
+| `ROADMAP.md` | Those tasks grouped into phases |
+| `GSD_WORKFLOW.md` | Policy, guards, routine workflow |
+
+The two views are separate on purpose. Re-deriving the phase grouping should not
+require re-deciding what work exists.
+
+## Recovery Notice
 
 The previous `STATE.md`, `ROADMAP.md`, `PROJECT.md`, `01-CONTEXT.md`, and
-`01-DISCUSSION-LOG.md` were **lost on 2026-10-10**. `.planning/` had been
-gitignored in full (commit `aece01a`), so those files had no recovery path once
-they were removed from disk.
+`01-DISCUSSION-LOG.md` were **lost on 2026-10-10**. `.planning/` had been gitignored
+in full (commit `aece01a`), so those files had no recovery path.
 
 - `PROJECT.md`, `01-CONTEXT.md`, `01-DISCUSSION-LOG.md` — restored from `aece01a^`
-- `ROADMAP.md` — **unrecoverable**; rebuilt from `ecom_project_master.md` and git
-  history. It is not the old roadmap; the phase structure changed in #9.
-- `STATE.md` — this file is a rewrite, not a restoration. The recovered copy claimed
-  "Phase 01 planned, 0% complete", which was months stale and actively misleading.
+- `ROADMAP.md` — unrecoverable; written fresh, then re-derived again the same day
+- `STATE.md` — a rewrite. The recovered copy claimed "Phase 01 planned, 0% complete"
+  while Phases 01 and 02 were both merged.
 
-**Root cause:** gitignored directories are unprotected, not merely untracked.
-`git reset --hard`, `git clean -fd`, a fresh clone, or a new machine all remove them
-silently. `.planning/` is now tracked for exactly this reason. Do not re-ignore it —
-see `GSD_WORKFLOW.md`.
+`.planning/` is now tracked. See `GSD_WORKFLOW.md`.
+
+## What The Rebuild Got Wrong First
+
+The first rebuilt roadmap claimed Phase 02 (catalog) was complete. It was not, and
+the error came from writing success criteria from a commit message rather than from
+what a catalog must do. Inventory was unmanaged — entity present, no code. The second
+derivation went the other way: from `WORK-INVENTORY.md`, where each task states what
+it is, rather than from what was shipped.
+
+Two corrections worth remembering:
+
+- **01B existed and was never executed.** 17 code-review items scoped 2026-06-19, no
+  plan, no summary. It sat inside a phase already marked complete, so nothing
+  reported it. `gsd-doctor` now checks for a CONTEXT with no plan beside it.
+- **01B was not a security phase.** It is a data-integrity and tooling backlog.
+  Only one of its 18 items is security-related. The four CRITICAL findings from
+  `.review/project-2026-06-16.md` were fixed inside Phase 01's waves.
 
 ## Key Decisions
 
-- `.planning/` artifacts are **tracked**; only ephemeral session files
-  (`.continue-here.md`, handoff files) stay ignored. The planning record is project
-  documentation — ADRs, decisions, and verification evidence — not personal scratch.
-- GSD sub-phases decompose master doc Phase 1. The master doc's 5 macro-phases map to
-  GSD milestones, not phases.
-- Phase 06 (API Documentation) is where the fail-open auth default gets fixed — that
-  pass re-reads every route anyway.
+- Phases are ordered by **dependency**, not topic. Data integrity (03) precedes
+  checkout (06) because transactions and optimistic locking are what prevent oversell.
+- Documentation (08) precedes the frontend (10) because orval consumes the OpenAPI spec.
+- Seeds (09) precede the frontend (10) because it needs data to develop against.
+- SEC-01 (invert auth to fail-closed) is scheduled in Phase 08, not Phase 03. It
+  touches every route, so it belongs where every route is already under review.
 
-## Open Issues Carried Forward
+## Open Issues
 
 | Issue | Where | Severity |
-|-------|-------|----------|
-| Auth is fail-open — `@UseGuards` is per-route, `@Public()` is inert metadata no guard reads | `backend/src/auth/decorators/public.decorator.ts` | High — security |
-| Phase 02 has no UAT record | `phases/02-product-catalog/02-CONTEXT.md` | Medium |
+|---|---|---|
+| Auth is fail-open — `JwtAuthGuard` is per-route, so a route without `@UseGuards` is public | `backend/src/auth/` | High — scheduled for Phase 08 |
+| `@Public()` writes metadata no guard reads | `backend/src/auth/decorators/public.decorator.ts` | High — same fix |
+| 10 of 12 entities have no FK indexes | `backend/src/entities/` | Medium — Phase 03 |
+| No optimistic locking on inventory | `backend/src/entities/inventory.entity.ts` | Medium — Phase 03 |
+| Phase 01 has 1 summary for 4 wave plans | `phases/01-security-hardening-foundation/` | Low — records only |
 
 ## Blockers
 
 None.
 
-## Pending Todos
-
-None.
-
 ## Session Continuity
 
-Rebuilt 2026-10-10. Next session starts at `/gsd-discuss-phase 3`.
+Roadmap re-derived 2026-10-10. Next session starts at `/gsd-plan-phase 3`.
