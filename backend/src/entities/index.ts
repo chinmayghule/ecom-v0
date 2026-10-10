@@ -3,6 +3,7 @@ export { Cart } from "./cart.entity.js";
 export { CartItem } from "./cart-item.entity.js";
 export { Category } from "./category.entity.js";
 export { Inventory } from "./inventory.entity.js";
+export { LoginAttempt } from "./login-attempt.entity.js";
 export { Order, OrderStatus } from "./order.entity.js";
 export { OrderItem } from "./order-item.entity.js";
 export { Product } from "./product.entity.js";

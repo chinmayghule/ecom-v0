@@ -4,6 +4,7 @@ import {
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { Order } from "./order.entity.js";
@@ -17,8 +18,14 @@ export class OrderItem {
   @ManyToOne(() => Order, { onDelete: "CASCADE" })
   order!: Order;
 
+  @RelationId((e: OrderItem) => e.order)
+  orderId!: string;
+
   @ManyToOne(() => Product, { onDelete: "SET NULL", nullable: true })
   product: Product | null = null;
+
+  @RelationId((e: OrderItem) => e.product)
+  productId!: string | null;
 
   @Column()
   productName!: string;

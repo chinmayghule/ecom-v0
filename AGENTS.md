@@ -24,9 +24,10 @@ Run all commands from the package directory (`backend/`, `frontend/`, etc.), not
 | `pnpm test` | Vitest unit tests (`src/**/*.spec.ts`) |
 | `pnpm test:e2e` | E2E tests (`./vitest.e2e.config.ts`) |
 | `pnpm test:cov` | Coverage report |
-| `pnpm migration:generate -- -d src/data-source.ts src/migrations/<name>` | Generate migration |
+| `pnpm migration:generate src/migrations/<Name>` | Generate migration (no `--`; pnpm forwards it literally and TypeORM then sees zero path arguments) |
 | `pnpm migration:run` | Apply pending |
 | `pnpm migration:revert` | Revert last |
+| `pnpm test:integration` | Tests that need a real Postgres (boots it on 5433) |
 | `pnpm lint` | Biome check `./src` |
 | `pnpm build` | `nest build` |
 
@@ -50,8 +51,22 @@ Run all commands from the package directory (`backend/`, `frontend/`, etc.), not
 
 ### Schema change workflow
 
-1. Create/update entity → `pnpm migration:generate` → `pnpm migration:run`
+1. Create/update entity → `pnpm migration:generate src/migrations/<Name>` → `pnpm migration:run`
 2. Rollback: `pnpm migration:revert`
+
+**A migration is immutable once it has run on any shared database.** Editing a
+shipped migration is how duplicate-constraint and half-applied-schema bugs
+appear. Before approving one, check it applies to an *empty* database — CI does
+this on every PR against a database nothing else references.
+
+**Name migrations for the change, not the timestamp.** `1791544704010-InitialSchema.ts`
+is fine; a robotic generated name is not. The timestamp prefix is required for
+ordering, the rest is yours.
+
+**Anything whose correctness depends on SQL semantics — atomicity, `ON CONFLICT`,
+foreign keys, cascade behaviour — needs an integration test in `src/integration/`.
+A unit test with a mocked repository cannot observe any of it, and will pass
+while the query is wrong.
 
 ### CI quirk
 
@@ -59,9 +74,9 @@ Run all commands from the package directory (`backend/`, `frontend/`, etc.), not
 
 ---
 
-## Frontend (planned)
+## Frontend
 
-Next.js with SSR. Storybook for UI documentation. No code yet.
+Next.js with App Router, TypeScript, Tailwind CSS. See `./ecom_project_master.md` for full stack decisions.
 
 ---
 
@@ -80,15 +95,32 @@ If an agent sees a decision that is poor practice, a code smell, or a security i
 
 ### Commit style
 
-Follow `./COMMIT_STYLE.md` — read that file before writing any commit message. Do not infer style from prior commits.
+Follow `./GIT_CONVENTIONS.md`.
 
-### Pre-commit
+### Branch naming
 
-Lefthook runs `pnpm biome check --staged`. Failing lint blocks commit.
+Follow `./GIT_CONVENTIONS.md`.
 
 ### Adding deps
 
 Use `pnpm add <pkg> --filter <workspace-package>` (not `npm install` or bare `pnpm add`).
+
+### Local-only files (never commit)
+
+**Rule:** a file belongs in git only if someone who has never touched this machine needs it
+to build, run, or review the project.
+
+**Do not add or remove `.gitignore` entries, or change repo-wide conventions, without asking
+the repository owner.** These exclusions are deliberate; a tool's default is not the project's
+decision. If you believe an exclusion is wrong, raise it — do not act on it.
+
+Full path list, rationale, and the guards that enforce it: **`./LOCAL_ONLY_FILES.md`**
+Read it before staging anything that looks like tooling state, secrets, or scratch.
+
+### Pre-commit
+
+Lefthook runs `pnpm biome check --staged` plus the local-only guards described in
+`LOCAL_ONLY_FILES.md`. Failing lint or a guard violation blocks the commit.
 
 ---
 

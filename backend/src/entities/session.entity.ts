@@ -2,8 +2,10 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from "typeorm";
 import { User } from "./user.entity.js";
@@ -15,6 +17,9 @@ export interface DeviceInfo {
 }
 
 @Entity("sessions")
+// Every authenticated request looks a session up by its hashed refresh token.
+// Added in AddSessionRefreshTokenIndex1791601120000.
+@Index("IDX_sessions_refresh_token", ["refreshToken"])
 export class Session {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -24,6 +29,9 @@ export class Session {
 
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   user!: User;
+
+  @RelationId((e: Session) => e.user)
+  userId!: string;
 
   @Column()
   expiresAt!: Date;

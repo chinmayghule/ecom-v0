@@ -1,26 +1,42 @@
-import { UnauthorizedException } from "@nestjs/common";
+import { type ExecutionContext, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test } from "@nestjs/testing";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SessionService } from "../../session.service.js";
 import { RefreshTokenGuard } from "../refresh-token.guard.js";
 
-function mockExecutionContext(cookies: Record<string, string>) {
+function mockExecutionContext(
+  cookies: Record<string, string>,
+  existingUser?: Record<string, unknown>,
+): Partial<ExecutionContext> {
   const request: Record<string, unknown> = { cookies };
+  if (existingUser) request.user = existingUser;
   return {
-    switchToHttp: () => ({
-      getRequest: () => request,
-    }),
+    switchToHttp: () => ({ getRequest: () => request }),
     getHandler: () => ({}),
     getClass: () => ({}),
-  } as any;
+  };
 }
 
+function requestOf(context: Partial<ExecutionContext>) {
+  return context.switchToHttp().getRequest() as {
+    user: Record<string, unknown>;
+  };
+}
+
+/**
+ * The guard verifies the refresh token's SIGNATURE and nothing else.
+ *
+ * It used to also look up the session. That made it impossible for a replayed
+ * token to ever reach the reuse-detection branch downstream: the row was already
+ * deleted by the rotation that consumed it, so the guard threw a generic
+ * "Session not found or expired" and the attacker's other sessions survived.
+ * Whether a token is still unspent is database state, and one atomic
+ * `DELETE ... RETURNING` answers it correctly under concurrency.
+ */
 describe("RefreshTokenGuard", () => {
   let guard: RefreshTokenGuard;
   let jwtService: JwtService;
-  let sessionService: SessionService;
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({
@@ -28,9 +44,7 @@ describe("RefreshTokenGuard", () => {
         RefreshTokenGuard,
         {
           provide: JwtService,
-          useValue: {
-            verify: vi.fn(),
-          },
+          useValue: { verify: vi.fn() },
         },
         {
           provide: ConfigService,
@@ -38,94 +52,96 @@ describe("RefreshTokenGuard", () => {
             get: vi.fn().mockReturnValue("test-refresh-secret"),
           },
         },
-        {
-          provide: SessionService,
-          useValue: {
-            validateRefreshToken: vi.fn(),
-          },
-        },
       ],
     }).compile();
 
     guard = module.get(RefreshTokenGuard);
     jwtService = module.get(JwtService);
-    sessionService = module.get(SessionService);
   });
 
-  it("returns true with valid refresh token and valid session", async () => {
+  it("verifies against the refresh secret, not the access secret", async () => {
     vi.mocked(jwtService.verify).mockReturnValue({ sub: "user-1" });
-    vi.mocked(sessionService.validateRefreshToken).mockResolvedValue({
-      id: "session-1",
-    } as any);
 
-    const context = mockExecutionContext({ refreshToken: "valid-token" });
-    const result = await guard.canActivate(context);
+    await guard.canActivate(
+      mockExecutionContext({ refreshToken: "rt-abc" }) as ExecutionContext,
+    );
 
-    expect(result).toBe(true);
-    expect(jwtService.verify).toHaveBeenCalledWith("valid-token", {
+    expect(jwtService.verify).toHaveBeenCalledWith("rt-abc", {
       secret: "test-refresh-secret",
     });
-    expect(sessionService.validateRefreshToken).toHaveBeenCalledWith(
-      "user-1",
-      "valid-token",
-    );
-    const req = context.switchToHttp().getRequest();
-    expect(req.user).toEqual({ id: "user-1", sessionId: "session-1" });
   });
 
-  it("preserves existing request.user fields from JwtAuthGuard", async () => {
+  it("attaches the subject and the token to the request", async () => {
     vi.mocked(jwtService.verify).mockReturnValue({ sub: "user-1" });
-    vi.mocked(sessionService.validateRefreshToken).mockResolvedValue({
-      id: "session-1",
-    } as any);
 
-    const context = mockExecutionContext({ refreshToken: "valid-token" });
-    const req = context.switchToHttp().getRequest();
-    req.user = {
+    const context = mockExecutionContext({ refreshToken: "rt-abc" });
+    await guard.canActivate(context as ExecutionContext);
+
+    expect(requestOf(context).user).toMatchObject({
       id: "user-1",
-      email: "test@example.com",
-      role: "customer",
-    };
-
-    const result = await guard.canActivate(context);
-
-    expect(result).toBe(true);
-    expect(req.user).toEqual({
-      id: "user-1",
-      email: "test@example.com",
-      role: "customer",
-      sessionId: "session-1",
+      refreshToken: "rt-abc",
     });
   });
 
-  it("throws UnauthorizedException when no refresh token cookie", async () => {
-    const context = mockExecutionContext({});
+  it("preserves fields set by an earlier guard", async () => {
+    vi.mocked(jwtService.verify).mockReturnValue({ sub: "user-1" });
 
-    await expect(guard.canActivate(context)).rejects.toThrow(
-      UnauthorizedException,
+    const context = mockExecutionContext(
+      { refreshToken: "rt-abc" },
+      {
+        traceId: "abc",
+      },
     );
+    await guard.canActivate(context as ExecutionContext);
+
+    expect(requestOf(context).user).toMatchObject({
+      traceId: "abc",
+      id: "user-1",
+    });
   });
 
-  it("throws UnauthorizedException when JWT verification fails", async () => {
+  it("does not consult session state at all", async () => {
+    // Documents the deliberate removal of the session lookup. If a lookup were
+    // reintroduced, a replayed token would be rejected here with a generic 401
+    // and reuse detection downstream would become unreachable again.
+    vi.mocked(jwtService.verify).mockReturnValue({ sub: "user-1" });
+
+    const context = mockExecutionContext({ refreshToken: "spent-token" });
+    await expect(guard.canActivate(context as ExecutionContext)).resolves.toBe(
+      true,
+    );
+    expect(requestOf(context).user).toMatchObject({
+      refreshToken: "spent-token",
+    });
+  });
+
+  it("throws when no refresh token cookie is present", async () => {
+    await expect(
+      guard.canActivate(mockExecutionContext({}) as ExecutionContext),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it("throws when signature verification fails", async () => {
     vi.mocked(jwtService.verify).mockImplementation(() => {
-      throw new Error("jwt malformed");
+      throw new Error("invalid signature");
     });
 
-    const context = mockExecutionContext({ refreshToken: "bad-token" });
-
-    await expect(guard.canActivate(context)).rejects.toThrow(
-      UnauthorizedException,
-    );
+    await expect(
+      guard.canActivate(
+        mockExecutionContext({ refreshToken: "forged" }) as ExecutionContext,
+      ),
+    ).rejects.toThrow(UnauthorizedException);
   });
 
-  it("throws UnauthorizedException when session not found", async () => {
-    vi.mocked(jwtService.verify).mockReturnValue({ sub: "user-1" });
-    vi.mocked(sessionService.validateRefreshToken).mockResolvedValue(null);
+  it("throws on an expired token", async () => {
+    vi.mocked(jwtService.verify).mockImplementation(() => {
+      throw new Error("jwt expired");
+    });
 
-    const context = mockExecutionContext({ refreshToken: "valid-token" });
-
-    await expect(guard.canActivate(context)).rejects.toThrow(
-      UnauthorizedException,
-    );
+    await expect(
+      guard.canActivate(
+        mockExecutionContext({ refreshToken: "expired" }) as ExecutionContext,
+      ),
+    ).rejects.toThrow(UnauthorizedException);
   });
 });

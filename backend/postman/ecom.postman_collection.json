@@ -1,0 +1,428 @@
+{
+  "info": {
+    "name": "ecom-v0 API",
+    "description": "Headless-runnable auth collection for the ecom-v0 backend.\n\nRun with:\n  pnpm start:dev          # in another shell, from backend/\n  pnpm test:api           # newman, from backend/\n  pnpm test:api:ci        # newman --bail (stops at the first failure)\n\nThis is the SAME collection a human clicks in the Postman GUI, so the assertions\nbelow are the contract an AI agent or CI job checks. Anything asserted here\nthat drifts from the controller is a bug in one of the two.\n\nOrdering is load-bearing:\n  register -> login -> me -> refresh -> sessions -> revoke one -> revoke all\n  -> forgot-password -> reset-password -> logout\n\n`register` uses a throwaway email generated per run so the collection is\nre-runnable against a database that already has data; a hardcoded address\nwould 409 on the second run. Every other request reads `{{testUserEmail}}`,\nwhich is why Register must run first — and why running a single request out of\norder in the GUI will fail on an undefined variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testUserEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testUserPassword",
+      "value": "correct-horse-Battery-9!staple",
+      "type": "string"
+    },
+    {
+      "key": "revokeTargetId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{testUserEmail}}\",\n  \"password\": \"{{testUserPassword}}\",\n  \"name\": \"Newman Runner\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "register"]
+        },
+        "description": "Creates the account every later request authenticates as. Returns 201, not 200 — NestJS defaults every @Post() to 201."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Fresh identity per run, so re-running the collection does not",
+              "// collide with the account the previous run created.",
+              "pm.collectionVariables.set(\n  'testUserEmail',\n  `newman.${Date.now()}@example.com`,\n);"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('register returns 201', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('register returns an access token', function () {",
+              "  pm.expect(pm.response.json().accessToken).to.be.a('string').and.not.empty;",
+              "});",
+              "",
+              "pm.test('register sets an httpOnly refresh cookie', function () {",
+              "  const cookie = pm.response.headers.get('set-cookie') || '';",
+              "  pm.expect(cookie).to.include('refreshToken=');",
+              "  pm.expect(cookie.toLowerCase()).to.include('httponly');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{testUserEmail}}\",\n  \"password\": \"{{testUserPassword}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "login"]
+        },
+        "description": "Mints an access token in the body and a refresh token in an httpOnly cookie. Both are lifted into collection variables here, which is what lets every later request authenticate — including refresh and revoke-all, which send the cookie back explicitly rather than relying on the GUI's cookie jar."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('login returns 201', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('login returns an access token', function () {",
+              "  const accessToken = pm.response.json().accessToken;",
+              "  pm.expect(accessToken).to.be.a('string').and.not.empty;",
+              "  pm.collectionVariables.set('accessToken', accessToken);",
+              "});",
+              "",
+              "pm.test('login exposes the refresh token so later requests can replay it', function () {",
+              "  const cookie = pm.response.headers.get('set-cookie') || '';",
+              "  const match = /refreshToken=([^;]+)/.exec(cookie);",
+              "  pm.expect(match, 'no refreshToken in Set-Cookie').to.not.be.null;",
+              "  pm.collectionVariables.set('refreshToken', decodeURIComponent(match[1]));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Me",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "me"]
+        },
+        "description": "GET returns 200. Proves the access token from Login is accepted by the JwtAuthGuard."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('me returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('me returns the registered user without a password hash', function () {",
+              "  const body = pm.response.json();",
+              "  pm.expect(body.email).to.eql(pm.collectionVariables.get('testUserEmail'));",
+              "  pm.expect(body).to.not.have.property('passwordHash');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Refresh",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Cookie", "value": "refreshToken={{refreshToken}}" }
+        ],
+        "body": { "mode": "raw", "raw": "" },
+        "url": {
+          "raw": "{{baseUrl}}/auth/refresh",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "refresh"]
+        },
+        "description": "Rotation. The guard reads the refresh token from the cookie only — the body is ignored — so the Cookie header is the whole request. The token is single-use: AuthService deletes the session row this call matches and issues a new pair, so the variables below must be overwritten or the next refresh will be treated as a replay and will revoke every session for the account."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('refresh returns 201', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('refresh rotates both tokens', function () {",
+              "  const accessToken = pm.response.json().accessToken;",
+              "  pm.expect(accessToken).to.be.a('string').and.not.empty;",
+              "  pm.collectionVariables.set('accessToken', accessToken);",
+              "",
+              "  const cookie = pm.response.headers.get('set-cookie') || '';",
+              "  const match = /refreshToken=([^;]+)/.exec(cookie);",
+              "  pm.expect(match, 'no rotated refreshToken in Set-Cookie').to.not.be.null;",
+              "  pm.collectionVariables.set('refreshToken', decodeURIComponent(match[1]));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List Sessions",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/sessions",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "sessions"]
+        },
+        "description": "GET returns 200. Newest first (SessionService.findByUserId orders createdAt DESC), so the current session is index 0."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('sessions returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('sessions lists the register and login sessions', function () {",
+              "  const sessions = pm.response.json();",
+              "  pm.expect(sessions).to.be.an('array').with.lengthOf.at.least(2);",
+              "  pm.expect(sessions[0].id).to.be.a('string').and.not.empty;",
+              "  // Revoke the OLDEST session, not sessions[0]. sessions[0] is the",
+              "  // one the current refresh token belongs to; deleting it would make",
+              "  // the next refresh look like a token replay, which revokes every",
+              "  // session for the account and fails the assertions after this.",
+              "  pm.collectionVariables.set(",
+              "    'revokeTargetId',",
+              "    sessions[sessions.length - 1].id,",
+              "  );",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Revoke Session",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/sessions/{{revokeTargetId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "sessions", "{{revokeTargetId}}"]
+        },
+        "description": "DELETE with no @HttpCode override returns 200. The delete is scoped to (id, userId), so another user's session id cannot be revoked through this endpoint."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('revoke session returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('revoke session confirms', function () {",
+              "  pm.expect(pm.response.json().message).to.eql('Session revoked');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Revoke All Sessions",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Cookie", "value": "refreshToken={{refreshToken}}" }
+        ],
+        "body": { "mode": "raw", "raw": "" },
+        "url": {
+          "raw": "{{baseUrl}}/auth/sessions/revoke-all",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "sessions", "revoke-all"]
+        },
+        "description": "POST returns 201. Keeps the session matching the supplied cookie and revokes the rest; the caller is not logged out of its own request."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('revoke all sessions returns 201', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('revoke all sessions confirms', function () {",
+              "  pm.expect(pm.response.json().message).to.eql('All other sessions revoked');",
+              "});",
+              "",
+              "pm.test('revoke all sessions clears the refresh cookie', function () {",
+              "  const cookie = pm.response.headers.get('set-cookie') || '';",
+              "  // An expiry in the past is how a cookie is deleted.",
+              "  pm.expect(cookie).to.include('refreshToken=');",
+              "  pm.expect(cookie.toLowerCase()).to.include('expires=thu, 01 jan 1970');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forgot Password",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{testUserEmail}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/forgot-password",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "forgot-password"]
+        },
+        "description": "The one POST in this controller with @HttpCode(OK), so 200 rather than 201. The response is identical for a known and an unknown address — deliberately, so the endpoint cannot be used to enumerate registered emails."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('forgot password returns 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('forgot password does not disclose whether the account exists', function () {",
+              "  pm.expect(pm.response.json().message).to.eql(",
+              "    'If that email is registered, a password reset link has been sent.',",
+              "  );",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reset Password (rejects an unknown token)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"not-a-real-reset-token\",\n  \"password\": \"thorough-River-Moonlight-7!ridge\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/auth/reset-password",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "reset-password"]
+        },
+        "description": "Asserts the rejection path only.\n\nA full success path cannot be driven from Newman: the raw reset token is generated server-side and delivered by email, and the DevEmailService writes it to the application log rather than to an HTTP response Newman can read. Wiring it up would mean moving the token into a response body or a shared file, which would weaken the endpoint.\n\nWhat this does prove: the route resolves, the DTO validation passes (a 400 here means the validator rejected the body, not that the token was refused), and a token that was never issued is rejected instead of silently changing a password. The success path is covered by the backend's own integration tests."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('reset password rejects an unknown token with 400', function () {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('reset password does not echo the token', function () {",
+              "  pm.expect(pm.response.text()).to.not.include('not-a-real-reset-token');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+          { "key": "Cookie", "value": "refreshToken={{refreshToken}}" }
+        ],
+        "body": { "mode": "raw", "raw": "" },
+        "url": {
+          "raw": "{{baseUrl}}/auth/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["auth", "logout"]
+        },
+        "description": "The one POST in this controller with @HttpCode(NO_CONTENT), so 204 and an empty body. Asserted last: it revokes the session the refresh token belongs to."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('logout returns 204', function () {",
+              "  pm.response.to.have.status(204);",
+              "});",
+              "",
+              "pm.test('logout returns no body', function () {",
+              "  pm.expect(pm.response.text()).to.eql('');",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

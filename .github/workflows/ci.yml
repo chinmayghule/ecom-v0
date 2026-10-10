@@ -1,0 +1,156 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: ecom_test
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v6
+
+      # Local-only files must never enter the repo.
+      #
+      # This deliberately sweeps the WHOLE index, unlike the pre-commit hook,
+      # which is scoped to the staged set. In CI there is no unrelated commit
+      # for a stale violation to block, so a full sweep has no collateral
+      # damage and catches violations introduced by a merge or a --no-verify
+      # push. Runs on push as well as pull_request so a direct push to dev is
+      # covered too.
+      - name: Guard local-only files
+        run: |
+          leaked=$(git ls-files -i -c --exclude-standard)
+          if [ -n "$leaked" ]; then
+            echo "::error::Tracked files are gitignored and must not be committed:"
+            echo "$leaked"
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+
+      - name: Lint
+        run: pnpm biome check --no-errors-on-unmatched backend/src backend/test frontend shared biome.json lefthook.yml .github
+
+      - run: pnpm --filter backend build
+
+      # The migration guardrail.
+      #
+      # Applies every migration to a database nothing has ever written to, then
+      # reverts and re-applies. This is the only check that exercises the actual
+      # SQL, and it exists because a real blocker shipped green: two migrations
+      # added the same-named foreign key to reset_tokens, so `migration:run`
+      # failed on any empty database with
+      #   constraint "FK_69015e..." for relation "reset_tokens" already exists
+      # Unit tests mock every repository, so they never touch a schema and could
+      # not have found it — and no developer runs migrations from scratch until
+      # onboarding, so it surfaced on someone else's machine instead.
+      #
+      # The service container only creates POSTGRES_DB (ecom_test), so the
+      # throwaway database has to be made explicitly.
+      - name: Create throwaway migration database
+        run: |
+          PGPASSWORD=test psql -h localhost -U test -d ecom_test \
+            -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ecom_migtest;'
+
+      # `ecom_migtest` is a name nothing else references, so it is empty by
+      # construction: no cleanup step, no leak from a previous run.
+      - name: Verify migrations apply to an empty database
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: test
+          DATABASE_PASSWORD: test
+          DATABASE_NAME: ecom_migtest
+        run: |
+          pnpm --filter backend migration:run
+          pnpm --filter backend migration:revert
+          pnpm --filter backend migration:run
+
+      - run: pnpm --filter backend test:cov
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: test
+          DATABASE_PASSWORD: test
+          DATABASE_NAME: ecom_test
+
+      # Integration tests — the first CI step that executes real SQL against the
+      # Postgres service above.
+      #
+      # Everything above mocks its repositories, so a unit suite of 180+ tests
+      # can be green while the queries themselves are wrong. That is exactly how
+      # a migration that could not apply to an empty database, and a lockout
+      # counter that never incremented under parallel load, both reached a
+      # review with a passing check. These specs use the same container, so they
+      # cost seconds and no external service — CI never touches Neon.
+      #
+      # `migrationsRun: true` in the test bootstrap applies the real schema, so
+      # this also fails if the migration chain cannot build it.
+      - name: Integration tests
+        run: pnpm --filter backend test:integration:ci
+        env:
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: test
+          DATABASE_PASSWORD: test
+          DATABASE_NAME: ecom_test
+
+      # End-to-end tests — the only step that exercises the real HTTP surface.
+      #
+      # These two spec files existed since the initial scaffold and had never
+      # run in CI. Repairing them turned up three separate defects: a test
+      # asserting a `GET /` route that was never built, status-code expectations
+      # left behind by the security-hardening pass (201 where the API now
+      # returns 204/200), and a reset-token fixture still hashing with argon2
+      # after the tokens moved to SHA-256.
+      #
+      # They also document a limit of the current design: logout revokes the
+      # refresh token immediately, but an access token stays usable until it
+      # expires, because `JwtStrategy.validate` does not consult the sessions
+      # table. That is the standard stateless-JWT trade-off, and the suite now
+      # asserts it explicitly rather than asserting something untrue.
+      #
+      # `.env.test` is gitignored, so the values it would carry are set here.
+      # `setup.e2e.ts` loads it with dotenv, which never overrides an existing
+      # environment variable — these win.
+      - name: End-to-end tests
+        run: pnpm --filter backend test:e2e:ci
+        env:
+          NODE_ENV: test
+          DATABASE_HOST: localhost
+          DATABASE_PORT: 5432
+          DATABASE_USER: test
+          DATABASE_PASSWORD: test
+          DATABASE_NAME: ecom_test
+          JWT_SECRET: test-jwt-secret-at-least-32-chars-long-for-testing
+          JWT_REFRESH_SECRET: test-refresh-secret-at-least-32-chars-long-for-testing
+          # The suite issues a dozen registrations from one IP in seconds. The
+          # production-shaped defaults (register 5/min) reject that with 429,
+          # and the failures cascade — a throttled register never issues the
+          # refresh cookie later tests assert on. Raised, not removed: the
+          # ThrottlerGuard is still active.
+          RATE_LIMIT_GLOBAL: "100000"
+          RATE_LIMIT_LOGIN: "100000"
+          RATE_LIMIT_REFRESH: "100000"
+          RATE_LIMIT_FORGOT: "100000"
+          RATE_LIMIT_RESET: "100000"
+          RATE_LIMIT_REGISTER: "100000"
+          # No SMTP server in CI. The console transport cannot fail, which keeps
+          # a missing Mailpit from breaking a security test run.
+          EMAIL_TRANSPORT: console

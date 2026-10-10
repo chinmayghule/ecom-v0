@@ -13,5 +13,10 @@
     "parser": {
       "unsafeParameterDecoratorsEnabled": true
     }
+  },
+  "html": {
+    "parser": {
+      "interpolation": true
+    }
   }
 }

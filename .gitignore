@@ -1,18 +1,52 @@
-node_modules
-dist
-backend/coverage
+# ─────────────────────────────────────────────────────────────────────────────
+# Local-only files — never committed
+#
+# RULE: a file belongs in git only if someone who has never touched this
+# machine needs it to build, run, or review the project. Agent scratch,
+# personal tooling state and secrets fail that test.
+#
+# Every entry below states WHY, so intent is never mistaken for an oversight.
+# Do not remove or add entries without asking the repository owner.
+# Pre-commit guards enforce both directions — see lefthook.yml.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Secrets: machine-local credentials, never committed ──────────────────────
+# The canonical .env lives at the repo root (see AGENTS.md) and is loaded by both
+# @nestjs/config and the TypeORM CLI. Only the root template is tracked; the stale
+# backend/.env.example is a leftover from before the root convention and stays
+# ignored to avoid two diverging templates.
 .env
 .env.*
+!/.env.example
 *.log
-Dockerfile
-.scribble
-*.tsbuildinfo
-.review
 
-# graphify — knowledge graph output, never committed
-graphify-out/
-
-# PAM — internal tooling, never committed
-.pam/
+# ── Agent & tool state: scratch for one machine, never committed ─────────────
+# GSD planning state (roadmap, phase plans, UAT records) — local by design.
 .planning/
-cli.sh  # safety net: root-level symlink to .pam/cli.sh, never tracked
+# PAM — internal tooling; self-documented as "lives entirely in .pam/".
+.pam/
+# Dated AI code-review reports.
+.review/
+# Personal scratchpad and hand-written reports.
+.scribble/
+# opencode agent config and its own node_modules.
+.opencode/
+# Generated knowledge graph.
+graphify-out/
+# Personal editor settings — individual taste, not project config.
+.vscode/
+# Parked dead code. Kept locally for reference; never shipped or built.
+archive/
+
+# ── Dependencies ─────────────────────────────────────────────────────────────
+node_modules
+
+# ── Build output & caches ────────────────────────────────────────────────────
+dist
+backend/coverage
+*.tsbuildinfo
+# NOTE: Dockerfile is deliberately NOT ignored. Phase 1 deploys the backend to
+# Render via a multi-stage Dockerfile, and the rule at the top of this file says
+# a file belongs in git if a fresh clone needs it to build or run the project.
+# A Dockerfile is exactly that file. Container *artefacts* stay excluded because
+# `dist` and `node_modules` already cover them.

@@ -1,6 +1,76 @@
 pre-commit:
   parallel: true
   commands:
+    # G1 — Nothing gitignored may be tracked.
+    # Reads .gitignore directly rather than hardcoding a list, so it also
+    # catches local-only paths that have no entry in guard-local-only-dirs.
+    #
+    # Scoped to the STAGED set, not the whole index. Scanning the whole index
+    # reports every tracked-and-ignored file in the repo, so one stale violation
+    # blocks every commit on the branch — including typo fixes that cannot be
+    # responsible. --diff-filter=ACM skips deletions (untracking a file must stay
+    # possible); --no-index keeps it working on paths that no longer exist on disk.
+    #
+    # The whole-index sweep still runs in CI, where there is no unrelated commit
+    # to block and where a merge or --no-verify push can introduce one.
+    guard-ignored-tracked:
+      run: |
+        leaked=$(git diff --cached --name-only --diff-filter=ACM -z \
+                 | git check-ignore --stdin -z --no-index | tr '\0' '\n')
+        if [ -n "$leaked" ]; then
+          echo "Refusing to commit: these paths are gitignored and local-only." >&2
+          echo "$leaked" >&2
+          echo "" >&2
+          echo "If any of them is genuinely project content, add a negation" >&2
+          echo "rule to .gitignore and commit that change alongside." >&2
+          exit 1
+        fi
+
+    # G2 — Every local-only directory must still be excluded.
+    # Removing an ignore rule is the failure mode this prevents: without it,
+    # `git add` would happily stage the whole directory again.
+    #
+    # The list is stated explicitly here on purpose. An earlier draft PARSED it
+    # from .gitignore, which reads cleaner but fails open: deleting the `.review/`
+    # rule also drops `.review` from the parsed list, so the guard stops checking
+    # the one directory that was just unprotected. To assert "this is still
+    # ignored" you need the name recorded somewhere the rule cannot delete.
+    # (Verified: that draft exited 0 with the `.review/` rule removed.)
+    #
+    # The names are committed in .gitignore anyway, so an explicit list hides
+    # nothing. What it buys is a second, independent record that must agree.
+    #
+    # Trailing slashes are required. The patterns are written as `.planning/`,
+    # which only matches a directory, and --no-index means git cannot stat the
+    # path — so without the slash a fresh clone with no such directory yet
+    # would fail this guard spuriously.
+    guard-local-only-dirs:
+      run: |
+        failed=0
+        expected=".planning/ .pam/ .review/ .scribble/ .opencode/ graphify-out/ .vscode/ archive/"
+
+        for d in $expected; do
+          if ! git check-ignore -q --no-index "$d"; then
+            echo "$d is no longer gitignored — local-only files could be committed" >&2
+            failed=1
+          fi
+        done
+
+        # Drift check: every directory pattern in .gitignore's local-only section
+        # must be guarded above, so adding a path there without listing it here is
+        # caught instead of silently unprotected.
+        declared=$(sed -n '/Agent & tool state/,/^$/p' .gitignore \
+                   | grep -oE '^[^#[:space:]][^[:space:]]*/$' | sort)
+        guarded=$(for d in $expected; do echo "$d"; done | sort)
+        if [ "$declared" != "$guarded" ]; then
+          echo "Local-only dirs in .gitignore and guard-local-only-dirs disagree:" >&2
+          diff <(echo "$guarded") <(echo "$declared") >&2 || true
+          echo "Update both so a newly ignored path is actually guarded." >&2
+          failed=1
+        fi
+
+        exit $failed
+
     lint:
       run: pnpm biome check --staged --no-errors-on-unmatched
 
