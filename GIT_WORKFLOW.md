@@ -98,48 +98,56 @@ advice is for short-lived feature branches, where deletion signals completion.
 **No PR merges into `origin/dev` without a human having read it.** This applies
 to agents as much as to anyone else: an agent-authored PR is not self-reviewed.
 
-**GitHub cannot enforce this on a solo repository.** Authors cannot approve their
-own pull requests, and there is no setting to change that — the API returns
-`422 Review Can not approve your own pull request`. With one maintainer there is
-no second human, so requiring an approval on `main` would leave the repository
-permanently unmergeable.
+**GitHub cannot enforce this on a solo repository, and no setting changes that.**
+Authors cannot approve their own pull requests — the API returns
+`422 Review Can not approve your own pull request`, verified against this repo.
+The Approve button stays greyed out even at zero required reviews.
 
-So the two branches enforce different things, deliberately:
+So `required_approving_review_count` is **0 on both branches**. Setting it to 1
+does not mean "review required" — it means "nothing can ever merge", because the
+only person who can review is the person who wrote the code. That is the trap this
+repository fell into twice before.
 
-| Branch | Approvals | Enforce admins | Net effect |
-|---|---|---|---|
-| `dev` | 1 required | no | The requirement stands as policy; the owner is exempt through `enforce_admins: false`. |
-| `main` | 0 required | **yes** | No approval needed — and nobody, including admins, can change it without a PR and green CI. |
+What actually enforces safety is therefore CI, not a human:
 
-`main` does not gate on human approval because **a self-approval would be a rubber
-stamp**: one human, reading agent-written code. It gates on CI instead, which for
-this repository is the stronger guarantee — the `quality` job runs the migration
-smoke test that catches schema bugs a reviewer would not notice, and `strict: true`
-means `main` refuses to merge against a stale run.
+| Branch | Approvals | Enforce admins | Linear | Conversation resolution |
+|---|---|---|---|---|
+| `dev` | 0 | no | yes | no |
+| `main` | 0 | **yes** | no | **yes** |
+
+`main` is the protected one. `enforce_admins: true` means no one — including the
+owner and any agent holding a token — can push to it without opening a PR and
+getting `quality` green. `dev` is deliberately looser so a solo maintainer can
+work, and because nothing deploys from it.
+
+### What "approve" means here
+
+Since GitHub will not record a self-approval, review happens outside the UI:
+
+1. Read the diff and the PR description.
+2. Say so in the conversation.
+3. The merge is performed on that instruction.
+
+The mechanism is conversation, not a green checkmark. That is a real limitation of
+a solo repository and worth being honest about rather than papering over with a
+setting that silently does nothing.
+
+If a second human is ever available, raise the approval count to 1 — it will work
+immediately, because the deadlock is a shortage of reviewers, not a config error.
+A review-bot app is the other option; it is a separate GitHub actor, so it is
+permitted to approve.
 
 ### The general lesson
 
 **A control that cannot be satisfied is not a control. It is a blockage.**
 
-This exact trap produced the squash problem above. The approval requirement blocked
-every promotion; the bypass was taken to get work done; and the bypass silently
-broke a different rule. The failure was not dishonesty — the protection did
-exactly what it was configured to do. It was configuring a guarantee that the
-project could not honour.
+The approval requirement blocked every promotion; the bypass was taken to get work
+done; the bypass silently broke the merge strategy above. Nothing about that was
+dishonest — the protection did exactly what it was configured to do. The mistake
+was configuring a guarantee the project could not honour.
 
-The controls on `main` that *are* enforceable, and that actually protect a deploy:
-
-- a PR is required, with `enforce_admins: true` — direct pushes fail even for the owner
-- CI `quality` must pass and be **current**
-- no deletions, no force-pushes
-- conversations must be resolved before merging
-
-If a second human is ever available, raise `main`'s approval count. Until then, CI
-is the gate, and it is a real one.
-
-If you want a human read for its own sake on a solo repo, the options are a
-collaborator or a review-bot app — a separate GitHub actor, so it is permitted to
-approve. Neither is required.
+Prefer a gate that is genuinely enforceable and actually runs — here, CI — over
+one that is demanding and impossible.
 
 ## CI
 
@@ -166,15 +174,15 @@ you if they drift. Verified 2026-10-10:
 | Branch | Setting | Value |
 |---|---|---|
 | `dev` | required status checks | `quality` (strict — must be current) |
-| `dev` | required approving reviews | 1 |
-| `dev` | enforce admins | no — owner exempt from the approval |
+| `dev` | required approving reviews | 0 — GitHub cannot enforce this solo; see *Human review* |
+| `dev` | enforce admins | no — owner works here directly |
 | `dev` | dismiss stale reviews | yes |
 | `dev` | require linear history | yes — this is why `feature/* → dev` rebases |
 | `dev` | require conversation resolution | no |
 | `dev` | allow deletions / force pushes | no / no |
 | `main` | required status checks | `quality` (strict — must be current) |
-| `main` | required approving reviews | 0 — see *Human review* |
-| `main` | enforce admins | **yes** — no direct pushes, owner included |
+| `main` | required approving reviews | 0 — same reason |
+| `main` | enforce admins | **yes** — no direct pushes, owner and agents included |
 | `main` | dismiss stale reviews | yes |
 | `main` | require linear history | no — this is what allows promotion merge commits |
 | `main` | require conversation resolution | yes |
@@ -183,16 +191,17 @@ you if they drift. Verified 2026-10-10:
 | repository | delete branch on merge | no |
 | repository | rulesets | none — the guarantees above are branch protection only |
 
-Two asymmetries are intentional, and both are load-bearing:
+Three asymmetries are intentional, and each one is load-bearing:
 
-- **`enforce_admins` differs** (`dev` no, `main` yes). `dev` must stay mergeable by
-  a solo owner; `main` must not be touchable by anyone without a PR.
+- **`enforce_admins` differs** (`dev` no, `main` yes). `dev` must stay workable by a
+  solo owner; `main` must not be touchable by anyone without a PR and green CI.
 - **`require_linear_history` differs** (`dev` yes, `main` no). `dev` stays a clean
   linear line; `main` needs the merge commit that records a promotion.
+- **`require_conversation_resolution` differs** (`dev` no, `main` yes). Promotions
+  should not land with an unresolved thread attached.
 
 There is no ruleset on this repository. Anything described elsewhere as a
-"bypass list" does not exist here — exemption comes from `enforce_admins`, and it
-applies to `dev` only.
+"bypass list" does not exist here — all of the above is branch protection.
 
 ## Local hooks
 
