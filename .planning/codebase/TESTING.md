@@ -127,9 +127,6 @@ describe("Feature (e2e)", () => {
 | `pnpm test:e2e` | E2E tests |
 | `pnpm test:cov` | Unit tests with coverage thresholds enforced |
 
-## CI Quirk
-- `src/data-source.ts` uses `__dirname` globs pointing to `src/`. In CI, paths need to change to `dist/`
-
 ---
 
 *Analysis date: 2026-06-15*
