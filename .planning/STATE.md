@@ -21,8 +21,12 @@ progress:
 ## Current Position
 
 - **Next:** Phase 03 — Data Integrity & Code Quality
-- **Status:** Roadmap re-derived from the master document. Phase 01 complete, Phase 02 partial.
 - **Next action:** `/gsd-plan-phase 3`
+
+Phase 02 is partial, and Phase 04 is its remainder — not a substitute for it.
+The split is deliberate: Phase 04 makes inventory mutable, which needs the
+optimistic locking built in Phase 03, or the change creates the oversell bug
+(01B MAJ-11) on purpose. Phase 02 is delayed, not skipped.
 
 ## Terminology
 
@@ -39,9 +43,9 @@ what was also called "Phase 1", which implied the numbers were comparable. They 
 | Phase | Name | Status |
 |---|---|---|
 | 01 | Security Hardening & Foundation | ✅ complete — merged #6, UAT 8/8 |
-| 02 | Product Catalog | ◐ partial — merged #12; inventory not managed |
+| 02 | Product Catalog | ◐ partial — merged #12; remainder is Phase 04 |
 | 03 | Data Integrity & Code Quality | ○ **next** — 16 of 18 review items outstanding |
-| 04 | Catalog Completion | ○ not started |
+| 04 | Product Catalog — inventory & images | ○ not started — the rest of Phase 02 |
 | 05 | Cart & Addresses | ○ not started |
 | 06 | Orders & Checkout | ○ not started |
 | 07 | Seller & Admin Management | ○ not started |
@@ -114,6 +118,6 @@ Two corrections worth remembering:
 
 None.
 
-## Session Continuity
-
-Roadmap re-derived 2026-10-10. Next session starts at `/gsd-plan-phase 3`.
+Session-to-session state does not live here. It belongs in `.continue-here.md`,
+which is gitignored as ephemeral — putting it in this file made a tracked document
+carry a fact that was stale the moment it was written.

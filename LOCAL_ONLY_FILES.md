@@ -40,35 +40,15 @@ templates.
 
 ### Deliberately NOT ignored
 
-`Dockerfile` was previously gitignored. It is now tracked, because Phase 1 deploys the
-backend to Render via a multi-stage Dockerfile, and the rule above says a file belongs in
-git when a fresh clone needs it to build or run the project. Container *artefacts* stay
-excluded — `dist` and `node_modules` already cover them.
+`Dockerfile` — a fresh clone needs it to build. Container *artefacts* stay excluded
+(`dist`, `node_modules` already cover them).
 
-**`.planning/` was also gitignored until 2026-10-10, and is now tracked.** This reversed a
-previous decision, so the reasoning is recorded rather than quietly overwritten.
-
-It was ignored on the reasoning that it was *"agent scratch for one machine."* That is
-true of some of it and false of the rest. `ROADMAP.md`, `STATE.md`, `PROJECT.md`, and the
-per-phase context, plan, verification, and UAT records are project documentation — the
-equivalent of ADRs and a test plan — and the repo is public and meant to be read.
-
-More importantly, **a gitignored directory is unprotected, not merely untracked.** Git
-keeps no record of it, so `git reset --hard`, `git clean -fd`, a fresh clone, or a new
-machine delete it silently. That is not theoretical: on 2026-10-10 the ignore rule cost
-the project its roadmap. `ROADMAP.md` had never been tracked and had to be rebuilt from
-`ecom_project_master.md`; the rest were recoverable only by accident, because they had
-been force-added before the rule landed.
-
-The rule above resolves this better than the ignore rule did. A planning record is
-exactly the kind of file that fails the test — *"a file belongs in git only if someone
-who has never touched this machine needs it to build, run, or review the project"* —
-because a reviewer absolutely needs it to understand why the code is shaped as it is.
-
-Only genuinely ephemeral files stay ignored: `.continue-here.md` and handoff markers,
-which record where one session stopped mid-thought and mean nothing to anyone else.
-See `GSD_WORKFLOW.md` for the full split, and `guard-planning-tracked` for what stops
-this from being undone.
+`.planning/` — tracked. Planning records are project documentation (roadmap,
+decisions, plans, verification), and a gitignored directory is *unprotected*:
+`git reset --hard`, `git clean -fd`, or a fresh clone delete it with no recovery
+path. Only `.continue-here.md` and handoff markers stay ignored, as ephemeral
+session state. Split and rationale: `GSD_WORKFLOW.md`. Guard:
+`guard-planning-tracked`. History: [#19](https://github.com/chinmayghule/ecom-v0/pull/19).
 
 ---
 
@@ -109,14 +89,8 @@ whole-index. That asymmetry is intentional.
 
 ### Why `guard-local-only-dirs` keeps an explicit list
 
-An earlier draft parsed the directory names out of `.gitignore` instead of stating them.
-It failed open: deleting the `.review/` rule also dropped `.review` from the parsed list,
-so the guard stopped checking the one directory that had just been unprotected. Verified —
-it exited `0` with the rule removed.
-
-To assert "this is still ignored", the name has to be recorded somewhere the rule cannot
-delete. `.gitignore` states the intent; the guard states the invariant. They are cross-checked
-against each other so neither can drift silently.
-
-The names are committed in `.gitignore` either way, so an explicit list hides nothing. What
-it buys is a second, independent record that must agree.
+An earlier draft parsed directory names out of `.gitignore`. It failed open: deleting
+the `.review/` rule also dropped `.review` from the parsed list, so the guard stopped
+checking the one directory just unprotected. Verified — it exited `0` with the rule
+removed. To assert "still ignored", the name must be recorded somewhere the rule cannot
+delete.

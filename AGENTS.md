@@ -102,9 +102,10 @@ If an agent sees a decision that is poor practice, a code smell, or a security i
 | `./GIT_WORKFLOW.md` | branch flow, merge strategy, review rules, CI, protection settings |
 | `./GSD_WORKFLOW.md` | planning state: what is tracked, phase↔stage mapping, `pnpm gsd:doctor` |
 
-**Do not add `.planning/` to `.gitignore`.** The planning record is project
-documentation, not scratch, and it was lost on 2026-10-10 precisely because it
-was ignored. `guard-planning-tracked` blocks this.
+**Do not delete `.planning/`, or add it to `.gitignore`.** A gitignored directory
+is unprotected — `git reset --hard`, `git clean -fd`, or a fresh clone delete it
+with no recovery path. `guard-planning-tracked` blocks this; see
+`LOCAL_ONLY_FILES.md`.
 
 Never push to `origin/main`, never delete `origin/dev`, and never merge into
 `origin/dev` without a human approving review — an agent-authored PR is not

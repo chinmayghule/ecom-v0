@@ -1,14 +1,35 @@
 # External Integrations
 
-**Analysis Date:** 2026-06-15
+**Snapshot: 2026-06-15 — corrected 2026-10-10.** Entries checked since then are
+marked. Current state of record is `.planning/STATE.md`.
+
+## On writing down where a secret lives
+
+Naming the environment variable and the file that holds it is **not** a leak, and
+this file should keep doing it — a setup guide that says "unknown" is useless, and
+the variable name carries no capability on its own. What must never appear here is
+the *value*.
+
+`.env.local` is gitignored and `guard-ignored-tracked` blocks it from being staged,
+so the separation is enforced rather than assumed.
 
 ## APIs & External Services
 
 **API Documentation / Testing:**
 - **Postman** - API collection management
   - Collection: `ecom-v0` at https://api.getpostman.com/collections
-  - Auth: API key in `.env.local` (`POSTMAN_API_KEY`)
+  - Auth: API key in `.env.local` (`POSTMAN_API_KEY`) — name and location only
   - Workflow: Sync endpoints after tests pass (manual trigger)
+
+**Transactional Email:**
+- **Resend** - password reset delivery (`src/email/resend-email.service.ts`)
+- **SMTP** - selected via `EMAIL_TRANSPORT`, defaulting to `smtp` in development
+- **Mailpit** — local SMTP sink added since this snapshot. `docker-compose.yml`
+  starts it; web UI on `http://localhost:8025`. `SmtpEmailService` renders the same
+  HTML the Resend transport sends, so a reset email can be inspected as a rendered
+  message rather than copied out of a log line. No env var required; set
+  `EMAIL_TRANSPORT=console` to bypass it and log instead.
+- **DevEmailService** - logs instead of sending, for when there is no SMTP at all
 
 ## Data Storage
 
@@ -44,22 +65,26 @@
 - None configured (no Sentry, Datadog, etc.)
 
 **Logs:**
-- Console logging via NestJS default logger
-- TypeORM query logging enabled when `NODE_ENV !== 'test'` (see `src/app.module.ts:60`)
+- Pino structured logging with PII redaction (Phase 01) — **corrected**, this snapshot said "NestJS default logger"
+- TypeORM query logging enabled when `NODE_ENV !== 'test'` (`src/app.module.ts:89`)
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Not configured (no Vercel, AWS, Railway, etc. config files)
+- Not configured (no Vercel, Render, Neon config yet — Phase 11)
 
 **CI Pipeline:**
-- Not configured (no GitHub Actions, GitLab CI, etc. files detected)
+- `.github/workflows/ci.yml` — **corrected**, this snapshot said "not configured".
+  Runs on every PR: local-only guard, planning-state guard, lint, `nest build`,
+  a migration smoke test (apply → revert → apply on an empty database), unit,
+  integration, and E2E. Required status check on both branches is `quality`.
 
 **Local Dev Infrastructure (Docker Compose):**
 - `docker-compose.yml`:
   - `postgres` - Main DB (port 5432), persistent volume `postgres_data`
   - `pgweb` - Web UI for DB (port 8081)
   - `postgres-test` - Test DB (port 5433), `profile: test`, healthcheck
+  - `mailpit` - SMTP sink (1025) + web UI (8025)
 
 ## Environment Configuration
 
