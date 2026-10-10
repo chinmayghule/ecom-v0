@@ -37,31 +37,19 @@ every unfixed integrity problem.
 
 ## Phase Summary
 
-| # | Phase | Status |
-|---|---|---|
-| 01 | Security Hardening & Foundation | ✅ complete |
-| 02 | Product Catalog | ◐ partial |
-| 03 | Data Integrity & Code Quality | ○ not started |
-| 04 | Product Catalog — inventory & images | ○ not started — rest of Phase 2 |
-| 05 | Cart & Addresses | ○ not started |
-| 06 | Orders & Checkout | ○ not started |
-| 07 | Seller & Admin Management | ○ not started |
-| 08 | API Documentation & Auth Hardening | ○ not started |
-| 09 | Seeds & Docker Packaging | ○ not started |
-| 10 | Frontend & Component Library | ○ not started |
-| 11 | Observability & Deployment | ○ not started |
+Status is marked here. Per-phase detail follows.
 
-- [x] **Phase 1: Security Hardening & Foundation**
-- [ ] **Phase 2: Product Catalog**
-- [ ] **Phase 3: Data Integrity & Code Quality**
-- [ ] **Phase 4: Product Catalog — inventory & images**
-- [ ] **Phase 5: Cart & Addresses**
-- [ ] **Phase 6: Orders & Checkout**
-- [ ] **Phase 7: Seller & Admin Management**
-- [ ] **Phase 8: API Documentation & Auth Hardening**
-- [ ] **Phase 9: Seeds & Docker Packaging**
-- [ ] **Phase 10: Frontend & Component Library**
-- [ ] **Phase 11: Observability & Deployment**
+- [x] **Phase 1: Security Hardening & Foundation** — complete, merged #6, UAT 8/8
+- [ ] **Phase 2: Product Catalog** — ◐ partial, merged #12; remainder is Phase 04
+- [ ] **Phase 3: Data Integrity & Code Quality** — ○ not started, **next**
+- [ ] **Phase 4: Product Catalog — inventory & images** — ○ not started, rest of Phase 02
+- [ ] **Phase 5: Cart & Addresses** — ○ not started
+- [ ] **Phase 6: Orders & Checkout** — ○ not started
+- [ ] **Phase 7: Seller & Admin Management** — ○ not started
+- [ ] **Phase 8: API Documentation & Auth Hardening** — ○ not started
+- [ ] **Phase 9: Seeds & Docker Packaging** — ○ not started
+- [ ] **Phase 10: Frontend & Component Library** — ○ not started
+- [ ] **Phase 11: Observability & Deployment** — ○ not started
 
 **Progress:** 1 of 11 phases complete, 1 partial.
 
