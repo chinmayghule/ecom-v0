@@ -8,6 +8,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { LoggerModule } from "nestjs-pino";
 import { AuthModule } from "./auth/auth.module.js";
 import { ResetToken } from "./auth/entities/reset-token.entity.js";
+import { CatalogModule } from "./catalog/catalog.module.js";
 import { GLOBAL_RATE_LIMIT } from "./common/rate-limits.js";
 import { validate } from "./config/env.validation.js";
 import { SecurityConfigValidator } from "./config/security-config.validator.js";
@@ -127,6 +128,7 @@ import { HealthModule } from "./health/health.module.js";
     ThrottlerModule.forRoot([GLOBAL_RATE_LIMIT]),
     EmailModule.forRoot(),
     HealthModule,
+    CatalogModule,
   ],
   controllers: [],
   providers: [
