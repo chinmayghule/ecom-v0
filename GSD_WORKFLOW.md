@@ -82,17 +82,14 @@ gh pr create               →  dev, using "Rebase and merge"
 the branch first — otherwise the plan lands on `dev` and the PR shows
 implementation without its reasoning.
 
-**There is no `/gsd-complete-phase` command.** The phase gate is
-`/gsd-verify-work N`; `/gsd-complete-milestone` closes a milestone, not a phase.
-Closing a phase is then the two manual edits below.
-
 ### Closing a phase
 
-1. Mark it `- [x]` in the `ROADMAP.md` summary checklist.
-2. Update `completed_phases` and the position block in `STATE.md`.
+1. Run `/gsd-verify-work N`.
+2. Mark it `- [x]` in the `ROADMAP.md` summary checklist.
+3. Update `completed_phases` and the position block in `STATE.md`.
 
-Both, because `gsd-doctor` check 4 compares them — drift between them is how a
-phase becomes invisible to `/gsd-progress`.
+Steps 2 and 3 both, because `gsd-doctor` check 4 compares them — drift between them
+is how a phase becomes invisible to `/gsd-progress`.
 
 **One phase at a time.** Every phase branch edits `ROADMAP.md` and `STATE.md`;
 two phases at once conflict on exactly those files.

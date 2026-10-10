@@ -1,37 +1,20 @@
 # Testing
 
-**Snapshot: 2026-06-15 — corrected 2026-10-10.** This listed two config files.
-There are **three**: the integration suite and its config were added since.
+**Analysis Date:** 2026-06-15
 
 ## Test Framework
 
-- **Vitest** 4.1.6 — Unit, integration, and E2E test runner
+- **Vitest** 4.1.6 — Unit and E2E test runner
 - **@vitest/coverage-v8** 4.1.6 — V8-based coverage provider
 - **Supertest** 7.0.0 — HTTP integration testing
 
 ## Configuration
 
-Three configs, three suites. They are separate because they need different
-environments: unit tests mock every repository, integration tests need a real
-Postgres, and E2E needs the whole `AppModule` booted.
-
 | Config File | Suite | Needs a database? |
 |-------------|-------|--------------------|
 | `backend/vitest.config.ts` | Unit — `src/**/__tests__/*.spec.ts` | No, repositories mocked |
-| `backend/vitest.integration.config.ts` | Integration — `src/integration/*.spec.ts` | **Yes**, real Postgres |
-| `backend/vitest.e2e.config.ts` | E2E — `test/*.e2e-spec.ts` | **Yes**, real Postgres + full app |
-
-Integration specs (6 files): `brute-force`, `catalog`, `rbac-policies`,
-`register-soft-delete`, `reset-token`, `session`.
-
-```bash
-pnpm test              # unit
-pnpm test:integration  # real Postgres on 5433
-pnpm test:e2e          # full app, supertest
-pnpm test:cov          # unit + coverage
-```
-
-CI runs all three as separate steps, plus a migration smoke check.
+| `backend/vitest.integration.config.ts` | Integration — `src/integration/*.spec.ts` | Yes, real Postgres on 5433 |
+| `backend/vitest.e2e.config.ts` | E2E — `test/*.e2e-spec.ts` | Yes, real Postgres + full app |
 
 ## Test Structure
 
@@ -132,19 +115,21 @@ describe("Feature (e2e)", () => {
 
 - Provider: `@vitest/coverage-v8`
 - Output: `backend/coverage/`
-- No coverage thresholds configured in vitest configs — still true, and tracked as TL-01 in Phase 03 (01B item MAJ-15: the 80% threshold is unrealistic and unenforced)
+- Thresholds in `vitest.config.ts`: lines, functions, branches, statements — all 80
+- `pnpm test:cov` is `vitest run --coverage`, so thresholds are enforced locally and in CI
 
 ## Running Tests
 
 | Command | What |
 |---------|------|
 | `pnpm test` | Vitest unit tests |
+| `pnpm test:integration` | Integration tests, real Postgres |
 | `pnpm test:e2e` | E2E tests |
-| `pnpm test:cov` | Coverage report |
+| `pnpm test:cov` | Unit tests with coverage thresholds enforced |
 
 ## CI Quirk
 - `src/data-source.ts` uses `__dirname` globs pointing to `src/`. In CI, paths need to change to `dist/`
 
 ---
 
-*Testing analysis: 2026-06-15. Config table and commands corrected 2026-10-10.*
+*Analysis date: 2026-06-15*

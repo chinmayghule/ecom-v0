@@ -101,8 +101,8 @@ ownership enforced — pagination, search, and role-correct access.
 
 **Status:** ◐ **partial** — merged #12. Products and categories CRUD, pagination,
 and correctly-escaped name search shipped and are well tested. Inventory is
-**not** managed, and lands in **Phase 04** — see the note there for why it is not
-simply the next phase.
+**not** managed; it is Phase 04, which cannot start until Phase 03 lands the
+optimistic locking that safe inventory mutation depends on.
 
 **Depends on:** Phase 1 (auth and policy layer).
 

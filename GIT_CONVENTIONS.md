@@ -58,3 +58,19 @@ release/v2.1.0
 ```
 
 Do NOT use tool-specific prefixes (`gsd/`, `claude/`, etc.).
+
+GSD phases use `feature/<NN>-<slug>`, where `NN` matches `.planning/phases/<NN>-<name>/`.
+
+## `[AI]` prefix
+
+**Prefix every GitHub comment you author with `[AI]`** — PR descriptions, review
+comments, issue comments, and commit messages.
+
+```
+[AI] fix(gsd): recover the planning state and stop it being lost again
+[AI] Addressed the RCCs; the false claims were in CONCERNS.md, not the code.
+```
+
+The prefix makes authorship unambiguous, so a later reader can tell what was written
+by a person and what was written by an agent without reconstructing it from git.
+It is also what makes an agent-authored comment auditable after the fact.
