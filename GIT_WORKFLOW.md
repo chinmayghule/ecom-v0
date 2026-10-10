@@ -43,16 +43,26 @@ advice is for short-lived feature branches, where deletion signals completion.
 
 ## Human review
 
-**No PR merges into `origin/dev` without an approving review from at least one
-human.** Enforced by GitHub: `required_approving_review_count` is `1`.
+**No PR merges into `origin/dev` without a human having read it.** This applies
+to agents as much as to anyone else: an agent-authored PR is not self-reviewed.
 
-This applies to agents as much as to anyone else. An agent-authored PR is not
-self-reviewed.
+**GitHub cannot enforce this on a solo repository.** Authors cannot approve
+their own pull requests, and there is no setting to change that — the API
+returns `422 Review Can not approve your own pull request`. With one
+maintainer there is no second human, so `required_approving_review_count: 1`
+would leave the repository permanently unmergeable.
 
-The exception is a change so small that reviewing it costs more than the change
-itself — a typo, a one-line correction, an obviously mechanical edit. Not
-exempt: anything altering behaviour, adding a dependency, changing a migration,
-or touching auth.
+The owner is therefore on the ruleset bypass list, which means the approval
+requirement does not apply to them. Everything else still does: `dev` and `main`
+require a PR, require CI to pass, and block deletion and force-pushes.
+
+What that leaves is a rule held to rather than enforced. Reviewing your own diff
+before opening the PR is the mechanism; the guardrail does not exist.
+
+A change so small that reading it costs more than the change itself — a typo, a
+one-line correction, an obviously mechanical edit — does not need it. Not exempt:
+anything altering behaviour, adding a dependency, changing a migration, or
+touching auth.
 
 ## CI
 
@@ -79,7 +89,7 @@ you if they drift.
 | Branch | Setting | Value |
 |---|---|---|
 | `dev` | required status checks | `quality` |
-| `dev` | required approving reviews | 1 |
+| `dev` | required approving reviews | 1 — bypassed by the ruleset |
 | `dev` | dismiss stale reviews | yes |
 | `dev` | require linear history | yes |
 | `dev` | allow deletions / force pushes | no |
@@ -88,8 +98,11 @@ you if they drift.
 | `main` | require linear history | no — allows promotion merge commits |
 | `main` | enforce admins | yes |
 | `main` | allow deletions / force pushes | no |
-| repository | allow self-approval | yes |
 | repository | delete branch on merge | no |
+| ruleset | bypass list | repository owner (`chinmayghule`) |
+
+The bypass covers the approval requirement only. PRs, CI, and the delete /
+force-push blocks still apply to the owner.
 
 ## Local hooks
 
