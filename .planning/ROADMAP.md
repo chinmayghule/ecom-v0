@@ -42,7 +42,7 @@ every unfixed integrity problem.
 | 01 | Security Hardening & Foundation | ✅ complete |
 | 02 | Product Catalog | ◐ partial |
 | 03 | Data Integrity & Code Quality | ○ not started |
-| 04 | Catalog Completion | ○ not started |
+| 04 | Product Catalog — inventory & images | ○ not started — rest of Phase 2 |
 | 05 | Cart & Addresses | ○ not started |
 | 06 | Orders & Checkout | ○ not started |
 | 07 | Seller & Admin Management | ○ not started |
@@ -54,7 +54,7 @@ every unfixed integrity problem.
 - [x] **Phase 1: Security Hardening & Foundation**
 - [ ] **Phase 2: Product Catalog**
 - [ ] **Phase 3: Data Integrity & Code Quality**
-- [ ] **Phase 4: Catalog Completion**
+- [ ] **Phase 4: Product Catalog — inventory & images**
 - [ ] **Phase 5: Cart & Addresses**
 - [ ] **Phase 6: Orders & Checkout**
 - [ ] **Phase 7: Seller & Admin Management**
@@ -101,7 +101,8 @@ ownership enforced — pagination, search, and role-correct access.
 
 **Status:** ◐ **partial** — merged #12. Products and categories CRUD, pagination,
 and correctly-escaped name search shipped and are well tested. Inventory is
-**not** managed and is carried into Phase 04.
+**not** managed, and lands in **Phase 04** — see the note there for why it is not
+simply the next phase.
 
 **Depends on:** Phase 1 (auth and policy layer).
 
@@ -145,10 +146,15 @@ never executed, so the commerce work that follows is built on a sound data layer
 
 ---
 
-### Phase 4: Catalog Completion
+### Phase 4: Product Catalog — Inventory & Images
 
-**Goal:** Finish the catalog — make inventory a managed resource, and close the
-gaps that stop a seller running their own storefront.
+**Goal:** Finish the catalog. This is the **remainder of Phase 02**, not new
+scope — Phase 02 shipped the CRUD surface, and this phase ships what it did not.
+
+**Why it is not simply "Phase 02, finished" immediately:** CAT-01 makes inventory
+mutable, and mutable inventory without optimistic locking is the oversell bug
+(01B MAJ-11). Doing it before Phase 03 would build the defect deliberately. So
+Phase 02 splits across Phase 03, and Phase 2 is not abandoned — only ordered.
 
 **Depends on:** Phase 3 (DI-05 optimistic locking is what makes inventory safe to mutate).
 
