@@ -93,13 +93,24 @@ Next.js with App Router, TypeScript, Tailwind CSS. See `./ecom_project_master.md
 
 If an agent sees a decision that is poor practice, a code smell, or a security issue, **flag it and explain the better approach**. The user wants to learn industry standards, not just ship code.
 
-### Commit style
+### Git conventions
 
-Follow `./GIT_CONVENTIONS.md`.
+Three files, each authoritative for one thing. Read the relevant one before acting on git or GitHub.
 
-### Branch naming
+| File | Covers |
+|---|---|
+| `./COMMIT_STYLE.md` | how a commit message is written — types, scope, body, branch flow |
+| `./GIT_CONVENTIONS.md` | commit-message format and branch naming in detail |
+| `./GIT_WORKFLOW.md` | where work goes, merge strategy, review rules, CI, and the branch-protection settings that enforce them |
 
-Follow `./GIT_CONVENTIONS.md`.
+The rules that most often get broken by an agent:
+
+- **Never push to `origin/main`.** It changes only via a promotion PR from `origin/dev`. Branch protection blocks every other route.
+- **Never delete `origin/dev`.** It is a long-lived integration branch. `gh pr merge --delete-branch` on a `dev → main` PR targets `dev` as the head branch and will attempt to delete it.
+- **Never merge anything into `origin/dev` without a human approving review.** An agent-authored PR is not self-reviewed, however large or small the agent thinks it is.
+- **Squash `feature/* → dev`; use a merge commit for `dev → main`.** Squashing a long-lived head branch is what GitHub's own docs warn against.
+
+Branch names follow Conventional Branch: `feature/`, `fix/`, `chore/`, `docs/`, `release/` plus a kebab-case description. No tool-specific prefixes.
 
 ### Adding deps
 

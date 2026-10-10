@@ -44,42 +44,22 @@ Append `!` after the type/scope: `feat!`: `feat(auth)!: drop support for legacy 
 feature/*  ->  dev  ->  main
 ```
 
-Feature branches target `dev`. `dev` is the integration branch and always
-mergeable. `main` is what a deploy reads.
-
-Promotion is `dev` -> `main` through a PR titled `chore: promote dev to main`.
-Both branches are protected: PR required, CI required, linear history, no force
-pushes. `main` additionally requires review conversation to be resolved.
-
-Cut feature branches from an up-to-date `origin/dev`, never from a local
-`main`. A local `main` can be arbitrarily stale, and a branch cut from one
-carries whatever that commit had tracked — which is how `archive/` files came
-back into a commit that was supposed to touch one Markdown file.
+Merge strategy: squash `feature/*` into `dev`, merge-commit `dev` into `main`.
+`GIT_WORKFLOW.md` explains why, and records the branch-protection settings that
+enforce it.
 
 ## PR merges
 
-Squash-merge into `dev`. The squashed commit message becomes the merge title.
+| From | To | Method |
+|---|---|---|
+| `feature/*` | `dev` | squash — the squashed message becomes the merge title |
+| `dev` | `main` | merge commit |
 
-Squashing means the commits on `dev` are **not** ancestors of `main`. After a
-promotion, `main` sits N commits "behind" `dev` with zero commits unique to it,
-and `git log origin/main..origin/dev` lists every commit since the last
-promotion. That is expected, not drift — compare content instead:
-
-```sh
-git diff --stat origin/main origin/dev   # empty after a promotion
-```
-
-A non-empty diff means `main` is genuinely behind and needs another promotion.
-
-Required status checks are configured by **job name**. `main` requires
-`quality`, which is the single job in `.github/workflows/ci.yml`. Renaming that
-job leaves `main` permanently `BLOCKED` with no failing run to explain it,
-because a check that never reports can never pass — update branch protection in
-the same commit. Changing protection also does not re-evaluate checks that
-already ran; re-run CI after the change.
-
-Feature branches target `dev`; `main` is fed from `dev`. `origin/HEAD` points at
-`main`, which is not the integration branch — do not branch from it.
+Squashing is correct for a short-lived feature branch and wrong for a
+long-lived integration branch. `dev` is worked on continuously, so squash-merging
+it into `main` leaves the two historically unrelated and makes promotions
+conflict for no reason. `GIT_WORKFLOW.md` covers this, along with the review
+requirement, CI, and the branch-protection settings.
 
 ## Scope rule
 

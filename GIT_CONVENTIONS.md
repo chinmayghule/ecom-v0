@@ -1,8 +1,10 @@
 # Git Conventions
 
-## Commit style
+Commit-message format and branch naming. How a commit is *written* is in
+`COMMIT_STYLE.md`; where work goes and how it lands is in `GIT_WORKFLOW.md`.
+This file is the reference for the format rules themselves.
 
-This project follows **Conventional Commits** (`<type>(<scope>): <description>`).
+Format: **Conventional Commits** — `<type>(<scope>): <description>`.
 
 ## Types
 
@@ -39,10 +41,6 @@ docs: replace stale project brief with ecom_project_master.md
 ## Breaking changes
 
 Append `!` after the type/scope: `feat!`: `feat(auth)!: drop support for legacy tokens`.
-
-## PR merges
-
-Squash-merge into main. The squashed commit message becomes the merge title.
 
 ## Scope rule
 
