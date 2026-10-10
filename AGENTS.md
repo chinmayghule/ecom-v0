@@ -110,7 +110,14 @@ Never push to `origin/main`, never delete `origin/dev`, and never merge into
 `origin/dev` without a human approving review — an agent-authored PR is not
 self-reviewed.
 
-Branch names follow Conventional Branch: `feature/`, `fix/`, `chore/`, `docs/`, `release/` plus a kebab-case description. No tool-specific prefixes.
+GitHub cannot record that review: the API rejects self-approval outright
+(`422 Review Can not approve your own pull request`), so both branches sit at
+zero required approvals and the review happens in conversation. Wait to be told
+explicitly before merging anything — that instruction *is* the approval. A PR
+showing `BLOCKED` on review is expected on `main`; on `dev` it should not be, and
+if it is, the protection settings have drifted from `GIT_WORKFLOW.md`.
+
+Branch names follow Conventional Branch: `feature/`, `fix/`, `chore/`, `docs/`, `release/` plus a kebab-case description. No tool-specific prefixes. GSD phases use `feature/<NN>-<slug>`.
 
 ### Adding deps
 
