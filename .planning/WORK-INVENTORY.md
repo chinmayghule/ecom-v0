@@ -61,7 +61,7 @@ enforcement. What is missing:
 
 | ID | Task | Status | Depends on |
 |----|------|--------|------------|
-| CAT-01 | **Inventory is unmanaged.** `Inventory` entity exists; no controller, service, or route. Stock cannot be read or changed | ○ | DI-02 |
+| CAT-01 | **Inventory is unmanaged.** `Inventory` entity exists; no controller, service, or route. Stock cannot be read or changed | ○ | — |
 | CAT-02 | No `deleteCategory` — products have `softDeleteProduct`, categories have no delete path | ○ | — |
 | CAT-03 | No category ordering or hierarchy (`sortOrder`, `parentId` both absent) | ○ | — |
 | CAT-04 | `imageUrl` is a bare string — no upload or storage handling | ○ | — |

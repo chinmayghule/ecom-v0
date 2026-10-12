@@ -92,9 +92,10 @@ it is, rather than from what was shipped.
 
 Two corrections worth remembering:
 
-- **01B existed and was never executed.** 17 code-review items scoped 2026-06-19, no
-  plan, no summary. It sat inside a phase already marked complete, so nothing
-  reported it. `gsd-doctor` now checks for a CONTEXT with no plan beside it.
+- **01B existed and was never executed.** 18 code-review items scoped 2026-06-19
+  (17 outstanding; CRIT-05 done), with no plan and no summary. It sat inside a phase
+  already marked complete, so nothing reported it. `gsd-doctor` now checks for a
+  CONTEXT with no plan beside it.
 - **01B was not a security phase.** It is a data-integrity and tooling backlog.
   Only one of its 18 items is security-related. The four CRITICAL findings from
   `.review/project-2026-06-16.md` were fixed inside Phase 01's waves.
