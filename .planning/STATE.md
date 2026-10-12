@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: stage-1-complete-monolith
 milestone_name: Stage 1 — Complete Monolith
-status: Roadmap re-derived — Phase 03 (Data Integrity) next
+status: Phase 02 partial — continuing with its remaining criteria
 stopped_at: Roadmap rebuilt and re-structured after planning-state loss
 last_updated: "2026-10-10T00:00:00.000Z"
 last_activity: 2026-10-10 — De-structured outstanding work, re-derived the roadmap, resolved the stage/phase naming collision
 progress:
-  total_phases: 11
+  total_phases: 10
   completed_phases: 1
   total_plans: 4
   completed_plans: 1
-  percent: 9
+  percent: 10
 ---
 
 # Project State
@@ -20,13 +20,18 @@ progress:
 
 ## Current Position
 
-- **Next:** Phase 03 — Data Integrity & Code Quality
-- **Next action:** `/gsd-plan-phase 3`
+- **Next:** Phase 02 — Product Catalog (remaining criteria)
+- **Next action:** `/gsd-discuss-phase 2`
 
-Phase 02 is partial, and Phase 04 is its remainder — not a substitute for it.
-The split is deliberate: Phase 04 makes inventory mutable, which needs the
-optimistic locking built in Phase 03, or the change creates the oversell bug
-(01B MAJ-11) on purpose. Phase 02 is delayed, not skipped.
+Phases run in numerical order, so the lowest incomplete phase is next. Phase 02 is
+partial and its remaining criteria — inventory, category delete, ordering and
+hierarchy, image upload — are part of Phase 02, not a separate phase.
+
+**Tool caveat:** `roadmap.analyze` reports `next_phase: 3` because its routing
+skips phases whose status is `partial` (it searches only for
+`empty`/`no_directory`/`discussed`/`researched`). `init.progress` reports the
+correct answer. Where they disagree, `init.progress` is right — and
+`/gsd-progress --next` may route past a partial phase.
 
 ## Terminology
 
@@ -43,16 +48,15 @@ what was also called "Phase 1", which implied the numbers were comparable. They 
 | Phase | Name | Status |
 |---|---|---|
 | 01 | Security Hardening & Foundation | ✅ complete — merged #6, UAT 8/8 |
-| 02 | Product Catalog | ◐ partial — merged #12; remainder is Phase 04 |
-| 03 | Data Integrity & Code Quality | ○ **next** — 16 of 18 review items outstanding |
-| 04 | Product Catalog — inventory & images | ○ not started — the rest of Phase 02 |
-| 05 | Cart & Addresses | ○ not started |
-| 06 | Orders & Checkout | ○ not started |
-| 07 | Seller & Admin Management | ○ not started |
-| 08 | API Documentation & Auth Hardening | ○ not started |
-| 09 | Seeds & Docker Packaging | ○ not started |
-| 10 | Frontend & Component Library | ○ not started |
-| 11 | Observability & Deployment | ○ not started |
+| 02 | Product Catalog | ◐ partial — merged #12; **next** |
+| 03 | Data Integrity & Code Quality | ○ not started — 17 of 18 review items outstanding |
+| 04 | Cart & Addresses | ○ not started |
+| 05 | Orders & Checkout | ○ not started |
+| 06 | Seller & Admin Management | ○ not started |
+| 07 | API Documentation & Auth Hardening | ○ not started |
+| 08 | Seeds & Docker Packaging | ○ not started |
+| 09 | Frontend & Component Library | ○ not started |
+| 10 | Observability & Deployment | ○ not started |
 
 ## Documents
 

@@ -1472,7 +1472,7 @@ The following review findings touch files never modified by Phase 01 plans. They
 | P2 | MAJ-15 | Fix coverage thresholds | `vitest.config.ts` |
 | P2 | MIN-15 | Add `tsc --noEmit` to pre-commit | `lefthook.yml` |
 
-See `./01B-CONTEXT.md` for the detailed 01B plan.
+The detailed 01B plan moved to `../../03-data-integrity-and-code-quality/03-CONTEXT.md`; see also `01B-SUPERSEDED.md`.
 
 ---
 

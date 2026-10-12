@@ -40,18 +40,17 @@ every unfixed integrity problem.
 Status is marked here. Per-phase detail follows.
 
 - [x] **Phase 1: Security Hardening & Foundation** — complete, merged #6, UAT 8/8
-- [ ] **Phase 2: Product Catalog** — ◐ partial, merged #12; remainder is Phase 04
-- [ ] **Phase 3: Data Integrity & Code Quality** — ○ not started, **next**
-- [ ] **Phase 4: Product Catalog — inventory & images** — ○ not started, rest of Phase 02
-- [ ] **Phase 5: Cart & Addresses** — ○ not started
-- [ ] **Phase 6: Orders & Checkout** — ○ not started
-- [ ] **Phase 7: Seller & Admin Management** — ○ not started
-- [ ] **Phase 8: API Documentation & Auth Hardening** — ○ not started
-- [ ] **Phase 9: Seeds & Docker Packaging** — ○ not started
-- [ ] **Phase 10: Frontend & Component Library** — ○ not started
-- [ ] **Phase 11: Observability & Deployment** — ○ not started
+- [ ] **Phase 2: Product Catalog** — ◐ partial, merged #12; **next**
+- [ ] **Phase 3: Data Integrity & Code Quality** — ○ not started
+- [ ] **Phase 4: Cart & Addresses** — ○ not started
+- [ ] **Phase 5: Orders & Checkout** — ○ not started
+- [ ] **Phase 6: Seller & Admin Management** — ○ not started
+- [ ] **Phase 7: API Documentation & Auth Hardening** — ○ not started
+- [ ] **Phase 8: Seeds & Docker Packaging** — ○ not started
+- [ ] **Phase 9: Frontend & Component Library** — ○ not started
+- [ ] **Phase 10: Observability & Deployment** — ○ not started
 
-**Progress:** 1 of 11 phases complete, 1 partial.
+**Progress:** 1 of 10 phases complete, 1 partial. **Next: Phase 02.**
 
 ---
 
@@ -84,26 +83,29 @@ crashes — and add the foundation infrastructure later phases depend on.
 
 ### Phase 2: Product Catalog
 
-**Goal:** Deliver the product and category read/write surface with seller
-ownership enforced — pagination, search, and role-correct access.
+**Goal:** Deliver the full catalog surface with seller ownership enforced —
+pagination, search, category management, product images, and stock levels.
 
-**Status:** ◐ **partial** — merged #12. Products and categories CRUD, pagination,
-and correctly-escaped name search shipped and are well tested. Inventory is
-**not** managed; it is Phase 04, which cannot start until Phase 03 lands the
-optimistic locking that safe inventory mutation depends on.
+**Status:** ◐ **partial** — merged #12 delivered products and categories CRUD,
+pagination, and correctly-escaped name search. Criteria 1–5 are met; 6–10 are
+outstanding and are executed in this phase.
 
 **Depends on:** Phase 1 (auth and policy layer).
 
-**Plans:** no plan records (work landed without planning artifacts; reconstructed
-in `02-CONTEXT.md` and `02-SUMMARY.md`).
+**Plans:** no plan records for the shipped work (reconstructed in `02-CONTEXT.md`
+and `02-SUMMARY.md`). The remainder is not yet planned.
 
 **Success Criteria:**
-1. Categories CRUD available to admin.
-2. Products CRUD available to admin, seller ownership enforced in the service layer.
-3. Product listing is paginated.
-4. Product search escapes LIKE wildcards correctly.
-5. A seller cannot read or mutate another seller's products.
-6. ~~Inventory is a managed resource~~ — **not met**; moved to Phase 04 (CAT-01).
+1. Categories CRUD available to admin. *(met)*
+2. Products CRUD available to admin, seller ownership enforced in the service layer. *(met)*
+3. Product listing is paginated. *(met)*
+4. Product search escapes LIKE wildcards correctly. *(met)*
+5. A seller cannot read or mutate another seller's products. *(met)*
+6. Inventory is readable and mutable through the API (CAT-01).
+7. Stock cannot go negative (CAT-01).
+8. Inventory changes are transactional against the product write (CAT-01, DI-02).
+9. Categories support soft delete, ordering, and hierarchy (CAT-02, CAT-03).
+10. Product images are handled as uploads, not bare URL strings (CAT-04).
 
 ---
 
@@ -112,11 +114,12 @@ in `02-CONTEXT.md` and `02-SUMMARY.md`).
 **Goal:** Clear the code-review remediation backlog that was planned as 01B and
 never executed, so the commerce work that follows is built on a sound data layer.
 
-**Status:** not started. Source: `phases/01-security-hardening-foundation/01B-CONTEXT.md`.
+**Status:** not started. Source: `03-data-integrity-and-code-quality/03-CONTEXT.md`.
 
-**Depends on:** nothing. Deliberately first — its output is a prerequisite for Phase 06.
+**Depends on:** nothing. Deliberately first — its output is a prerequisite for Phase 05.
 
-**Plans:** not yet planned. 17 items, prioritised P0 → P1 → P2 in the source CONTEXT.
+**Plans:** not yet planned. 18 items (17 outstanding; CRIT-05 done), prioritised
+P0 → P1 → P2 in the source CONTEXT.
 
 **Success Criteria:**
 1. Unhandled errors return structured JSON; no stack traces leak (DI-01).
@@ -130,79 +133,57 @@ never executed, so the commerce work that follows is built on a sound data layer
 9. `RolesGuard` declares `CanActivate<ExecutionContext>` (CQ-06).
 10. All baseline env vars validated at startup (CQ-07).
 11. `tsc --noEmit` blocks commits with type errors (TL-02).
-12. Coverage thresholds are realistic and enforced (TL-01).
+12. ~~Coverage thresholds realistic and enforced~~ — already enforced at 80% on all four metrics (TL-01 ✅).
+13. Browser detection is correct — `Edge` and `Opera` no longer resolve to `Safari` (CQ-09).
+14. ~~Biome `useImportType` vs TypeORM decorators~~ — already resolved (CQ-08 ✅).
 
 ---
 
-### Phase 4: Product Catalog — Inventory & Images
-
-**Goal:** Finish the catalog. This is the **remainder of Phase 02**, not new
-scope — Phase 02 shipped the CRUD surface, and this phase ships what it did not.
-
-**Why it is not simply "Phase 02, finished" immediately:** CAT-01 makes inventory
-mutable, and mutable inventory without optimistic locking is the oversell bug
-(01B MAJ-11). Doing it before Phase 03 would build the defect deliberately. So
-Phase 02 splits across Phase 03, and Phase 2 is not abandoned — only ordered.
-
-**Depends on:** Phase 3 (DI-05 optimistic locking is what makes inventory safe to mutate).
-
-**Plans:** not yet planned.
-
-**Success Criteria:**
-1. Inventory is readable and mutable through the API (CAT-01).
-2. Stock cannot go negative.
-3. Categories support soft delete, matching products (CAT-02).
-4. Categories support ordering and hierarchy (CAT-03).
-5. Product images are handled as uploads, not bare URL strings (CAT-04).
-6. Inventory changes are transactional against the product write (CAT-01).
-
----
-
-### Phase 5: Cart & Addresses
+### Phase 4: Cart & Addresses
 
 **Goal:** Let a customer hold a basket and manage where it ships, including
 carrying a guest cart across login.
 
-**Depends on:** Phase 4 (cart lines reference inventory), Phase 3 (DI-02 transactions).
+**Depends on:** Phase 3 (DI-02 transactions).
 
 **Plans:** not yet planned.
 
 **Success Criteria:**
-1. Customer can add, update, and remove cart items.
-2. Cart totals are derived server-side, never trusted from the client.
-3. A guest cart merges into the user cart on login, with a documented conflict rule.
-4. Customer can create, update, and delete saved addresses.
+1. Customer can add, update, and remove cart items (COM-01).
+2. Cart totals are derived server-side, never trusted from the client (COM-01).
+3. A guest cart merges into the user cart on login, with a documented conflict rule (COM-01).
+4. Customer can create, update, and delete saved addresses (COM-02).
 5. Only the owner can read or modify a cart or an address.
-6. Cart writes are transactional.
+6. Cart writes are transactional (DI-02).
 
 ---
 
-### Phase 6: Orders & Checkout
+### Phase 5: Orders & Checkout
 
 **Goal:** Turn a basket into an order — the lifecycle state machine, atomic stock
 decrement, and mock payment settlement.
 
-**Depends on:** Phase 5 (basket), Phase 3 (DI-02 transactions, DI-05 optimistic locking).
+**Depends on:** Phase 4 (basket), Phase 3 (DI-02 transactions, DI-05 optimistic locking).
 
 **Plans:** not yet planned.
 
 **Success Criteria:**
-1. Order lifecycle is an explicit state machine; illegal transitions are rejected.
-2. Checkout validates stock and decrements inventory atomically.
-3. Concurrent checkouts for the last unit result in one success and one 409, never an oversell.
-4. Mock payment settles the order; a payment failure leaves no partial state.
-5. A failed checkout rolls back the stock decrement.
-6. Customer can read their own order history and no one else's.
-7. Seller can read orders containing their products.
+1. Order lifecycle is an explicit state machine; illegal transitions are rejected (COM-03).
+2. Checkout validates stock and decrements inventory atomically (COM-04).
+3. Concurrent checkouts for the last unit result in one success and one 409, never an oversell (COM-04, DI-05).
+4. Mock payment settles the order; a payment failure leaves no partial state (COM-04).
+5. A failed checkout rolls back the stock decrement (COM-04, DI-02).
+6. Customer can read their own order history and no one else's (COM-03).
+7. Seller can read orders containing their products (COM-03).
 
 ---
 
-### Phase 7: Seller & Admin Management
+### Phase 6: Seller & Admin Management
 
 **Goal:** Give the non-customer roles the tooling they need, and wire up the
 `seller-profile` entity that has existed since the schema was written.
 
-**Depends on:** Phase 6 (admin manages the orders checkout creates).
+**Depends on:** Phase 5 (admin manages the orders checkout creates).
 
 **Plans:** not yet planned.
 
@@ -216,12 +197,12 @@ decrement, and mock payment settlement.
 
 ---
 
-### Phase 8: API Documentation & Auth Hardening
+### Phase 7: API Documentation & Auth Hardening
 
 **Goal:** Make the API self-describing and the codebase self-documenting — and
 fix the authentication default while every route is already under review.
 
-**Depends on:** Phase 7 (documents every endpoint built so far).
+**Depends on:** Phase 6 (documents every endpoint built so far).
 
 **Plans:** not yet planned.
 
@@ -243,12 +224,12 @@ fix the authentication default while every route is already under review.
 
 ---
 
-### Phase 9: Seeds & Docker Packaging
+### Phase 8: Seeds & Docker Packaging
 
 **Goal:** Make the system reproducible and portable — a seed script with
 representative data, and container packaging that runs the whole stack locally.
 
-**Depends on:** Phase 6 (cart and order tables need representative seed volume).
+**Depends on:** Phase 5 (cart and order tables need representative seed volume).
 
 **Plans:** not yet planned.
 
@@ -262,12 +243,12 @@ representative data, and container packaging that runs the whole stack locally.
 
 ---
 
-### Phase 10: Frontend & Component Library
+### Phase 9: Frontend & Component Library
 
 **Goal:** Deliver the user-facing product — a Next.js client over an
 orval-generated typed API, with the shared component library documented.
 
-**Depends on:** Phase 8 (OpenAPI spec — orval's input) and Phase 9 (seed data).
+**Depends on:** Phase 7 (OpenAPI spec — orval's input) and Phase 8 (seed data).
 
 **Plans:** not yet planned.
 
@@ -283,12 +264,12 @@ orval-generated typed API, with the shared component library documented.
 
 ---
 
-### Phase 11: Observability & Deployment
+### Phase 10: Observability & Deployment
 
 **Goal:** Ship it — BetterStack wired, CI complete, and the monolith deployed to
 free-tier infrastructure.
 
-**Depends on:** Phase 10 (deployment packages what Phase 10 builds).
+**Depends on:** Phase 9 (deployment packages what Phase 9 builds).
 
 **Plans:** not yet planned.
 
@@ -296,8 +277,8 @@ free-tier infrastructure.
 1. Pino logs reach BetterStack and uptime monitoring reports backend health (OPS-01).
 2. `/health` is wired to the uptime monitor (OPS-06).
 3. CI runs lint, build, unit, integration, E2E, and the migration check (OPS-02).
-4. Backend deploys to Render from `main`.
-5. Frontend deploys to Vercel.
+4. Backend deploys to Render from `main` (OPS-03).
+5. Frontend deploys to Vercel (OPS-04).
 6. Database provisioned on Neon with migrations applied (OPS-05).
 7. A fresh clone and a fresh deploy are both reproducible from documentation.
 

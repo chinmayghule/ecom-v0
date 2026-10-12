@@ -24,28 +24,28 @@ task-level detail or re-deciding what work exists.
 
 ## A. Data integrity & code quality
 
-Source: `01-security-hardening-foundation/01B-CONTEXT.md`, itself from
+Source: `03-data-integrity-and-code-quality/03-CONTEXT.md`, itself from
 `.review/project-2026-06-16.md`. **Never executed** — it has a CONTEXT but no
-PLAN or SUMMARY. Verified against the codebase 2026-10-10.
+PLAN or SUMMARY. Re-verified against the codebase 2026-10-10.
 
 | ID | Task | Status | Depends on |
 |----|------|--------|------------|
 | DI-01 | Global exception filter — every controller repeats try/catch today | ○ | — |
 | DI-02 | DB transactions for multi-entity writes — registration creates user + session with no rollback | ○ | — |
-| DI-03 | FK indexes — **10 of 12 entities have none** (only `login-attempt`, `session` do) | ○ | — |
+| DI-03 | FK indexes — **12 of 14 relationships unindexed**. `login_attempts` is indexed; `sessions` has an index on `refreshToken`, not on its `userId` FK | ○ | — |
 | DI-04 | `PoliciesGuard` service locator (`moduleRef.get()`) — hurts testability and tree-shaking | ○ | — |
 | DI-05 | Optimistic locking on inventory — concurrent checkout can oversell | ○ | DI-02 |
 | DI-06 | Service layer throws NestJS HTTP exceptions — breaks outside an HTTP context | ○ | — |
-| CQ-01 | `@Public()` is inert — writes metadata no guard reads. Either make it real or delete it | ◐ | — |
+| CQ-01 | `@Public()` is inert — writes metadata no guard reads. Applied on 5 catalog routes, honoured by none. Resolve via SEC-01 | ◐ | — |
 | CQ-02 | `RefreshDto` defined but never referenced | ○ | — |
 | CQ-03 | `app.e2e-spec.ts` tests auth endpoints without auth state | ○ | — |
 | CQ-04 | E2E specs share mutable state — order-dependent flakes | ○ | CQ-05 |
 | CQ-05 | No shared E2E helper — each file bootstraps its own app | ○ | — |
 | CQ-06 | `RolesGuard` lacks `implements CanActivate<ExecutionContext>` | ○ | — |
-| CQ-07 | `env.validation.ts` missing `NODE_ENV`, `LOG_LEVEL`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | ○ | — |
-| CQ-08 | Biome `useImportType` conflicts with TypeORM decorators | ○ | — |
-| CQ-09 | `parseDeviceInfo()` Safari detection matches Safari inside Chrome strings | ○ | — |
-| TL-01 | Coverage thresholds unrealistic and unenforced | ○ | — |
+| CQ-07 | `env.validation.ts` missing `LOG_LEVEL` — the other three are already validated | ○ | — |
+| CQ-08 | Biome `useImportType` vs TypeORM decorators — resolved, `biome.json` sets it `off` | ✅ | — |
+| CQ-09 | `parseDeviceInfo()` browser detection — `Chrome` is tested first so it is correct, but `Edge` and `Opera` are matched *after* `Safari` and so resolve to it | ○ | — |
+| TL-01 | Coverage thresholds at 80% on all four metrics (`vitest.config.ts`), enforced by `test:cov` | ✅ | — |
 | TL-02 | No `tsc --noEmit` in pre-commit | ○ | — |
 
 > **CQ-01 is already known to be a security problem, not just dead code.** See
@@ -61,7 +61,7 @@ enforcement. What is missing:
 
 | ID | Task | Status | Depends on |
 |----|------|--------|------------|
-| CAT-01 | **Inventory is unmanaged.** `Inventory` entity exists; no controller, service, or route. Stock cannot be read or changed | ○ | DI-05 |
+| CAT-01 | **Inventory is unmanaged.** `Inventory` entity exists; no controller, service, or route. Stock cannot be read or changed | ○ | DI-02 |
 | CAT-02 | No `deleteCategory` — products have `softDeleteProduct`, categories have no delete path | ○ | — |
 | CAT-03 | No category ordering or hierarchy (`sortOrder`, `parentId` both absent) | ○ | — |
 | CAT-04 | `imageUrl` is a bare string — no upload or storage handling | ○ | — |
@@ -117,8 +117,8 @@ controller, no service.
 | ID | Task | Status | Depends on |
 |----|------|--------|------------|
 | PKG-01 | Seed script — moderate volume; 50k+ products deferred to Stage 2 | ○ | COM-03 |
-| PKG-02 | Docker Compose running the full stack locally | ○ | PKG-01 |
-| PKG-03 | Multi-stage Dockerfiles for backend (and frontend) | ○ | PKG-01 |
+| PKG-02 | Docker Compose: `postgres`, `pgweb`, `mailpit`, `postgres-test` exist; the `backend` service does not | ◐ | PKG-01 |
+| PKG-03 | Backend `Dockerfile` exists and is multi-stage; the frontend one does not | ◐ | PKG-01 |
 
 ---
 
@@ -142,7 +142,7 @@ controller, no service.
 | ID | Task | Status | Depends on |
 |----|------|--------|------------|
 | OPS-01 | BetterStack log ingestion and uptime monitoring | ○ | PKG-03 |
-| OPS-02 | CI coverage complete (partially delivered) | ◐ | — |
+| OPS-02 | CI runs lint, build, unit, integration, E2E and the migration check | ✅ | — |
 | OPS-03 | Deploy backend to Render | ○ | PKG-03, OPS-01 |
 | OPS-04 | Deploy frontend to Vercel | ○ | FE-08 |
 | OPS-05 | Provision Neon and run migrations against it | ○ | PKG-03 |
@@ -154,15 +154,20 @@ controller, no service.
 
 | Section | Total | ✅ | ◐ | ○ |
 |---|---:|---:|---:|---:|
-| A. Data integrity & code quality | 17 | 0 | 1 | 16 |
+| A. Data integrity & code quality | 17 | 2 | 1 | 14 |
 | B. Catalog completion | 4 | 0 | 0 | 4 |
 | C. Commerce domain | 4 | 0 | 0 | 4 |
 | D. Role surfaces | 3 | 0 | 0 | 3 |
 | E. Documentation & auth posture | 5 | 0 | 0 | 5 |
-| F. Data & packaging | 3 | 0 | 0 | 3 |
+| F. Data & packaging | 3 | 0 | 2 | 1 |
 | G. Frontend | 8 | 0 | 0 | 8 |
-| H. Observability & deployment | 6 | 0 | 1 | 5 |
-| **Total** | **50** | **0** | **2** | **48** |
+| H. Observability & deployment | 6 | 1 | 0 | 5 |
+| **Total** | **50** | **3** | **3** | **44** |
+
+Statuses re-verified against the codebase 2026-10-10. Three tasks previously listed
+as outstanding were already done (`CQ-08`, `TL-01`, `OPS-02`), two were partly
+delivered (`PKG-02`, `PKG-03`), and `CQ-07` was scoped to a single variable after
+three of its four were found already validated.
 
 ---
 
