@@ -101,20 +101,21 @@ Two corrections worth remembering:
 
 ## Key Decisions
 
-- Phases are ordered by **dependency**, not topic. Data integrity (03) precedes
-  checkout (06) because transactions and optimistic locking are what prevent oversell.
-- Documentation (08) precedes the frontend (10) because orval consumes the OpenAPI spec.
-- Seeds (09) precede the frontend (10) because it needs data to develop against.
-- SEC-01 (invert auth to fail-closed) is scheduled in Phase 08, not Phase 03. It
+- Phases run in numerical order; among the remaining, dependency orders them.
+- Data integrity (03) precedes checkout (05) because transactions and optimistic
+  locking are what prevent oversell.
+- Documentation (07) precedes the frontend (09) because orval consumes the OpenAPI spec.
+- Seeds (08) precede the frontend (09) because it needs data to develop against.
+- SEC-01 (invert auth to fail-closed) is scheduled in Phase 07, not Phase 03. It
   touches every route, so it belongs where every route is already under review.
 
 ## Open Issues
 
 | Issue | Where | Severity |
 |---|---|---|
-| Auth is fail-open — `JwtAuthGuard` is per-route, so a route without `@UseGuards` is public | `backend/src/auth/` | High — scheduled for Phase 08 |
+| Auth is fail-open — `JwtAuthGuard` is per-route, so a route without `@UseGuards` is public | `backend/src/auth/` | High — scheduled for Phase 07 |
 | `@Public()` writes metadata no guard reads | `backend/src/auth/decorators/public.decorator.ts` | High — same fix |
-| 10 of 12 entities have no FK indexes | `backend/src/entities/` | Medium — Phase 03 |
+| 12 of 14 entity relationships have no FK index | `backend/src/entities/` | Medium — Phase 03 |
 | No optimistic locking on inventory | `backend/src/entities/inventory.entity.ts` | Medium — Phase 03 |
 | Phase 01 has 1 summary for 4 wave plans | `phases/01-security-hardening-foundation/` | Low — records only |
 

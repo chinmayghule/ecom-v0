@@ -5,7 +5,7 @@
 **Master doc mapping:** this milestone delivers **`ecom_project_master.md` → Stage 1**.
 
 GSD runs on a finer grain than the master document. The master document defines 5
-**stages**; this milestone covers Stage 1, decomposed into 11 **phases**.
+**stages**; this milestone covers Stage 1, decomposed into 10 **phases**.
 
 > **Terminology.** "Stage" belongs to `ecom_project_master.md` and is fixed for the
 > life of the project. "Phase" belongs to GSD and is re-derived whenever the master
@@ -22,12 +22,12 @@ is listed there with its source and dependencies. This roadmap only groups them.
 
 Phases are ordered by **dependency**, not by topic. Three orderings are load-bearing:
 
-1. **Data integrity (03) precedes checkout (06).** Transactions, FK indexes, and
+1. **Data integrity (03) precedes checkout (05).** Transactions, FK indexes, and
    optimistic locking are what stop concurrent checkout from overselling. Building
    checkout on their absence builds the bug DI-05 exists to catch.
-2. **Documentation (08) precedes the frontend (10).** orval generates the typed
+2. **Documentation (07) precedes the frontend (09).** orval generates the typed
    client *from* the OpenAPI spec, so the spec has to exist first.
-3. **Seeds (09) precede the frontend (10).** Frontend work needs data to develop
+3. **Seeds (08) precede the frontend (09).** Frontend work needs data to develop
    against, not a hand-made fixture per page.
 
 Grouping by topic instead would put inventory next to cart and silently inherit
@@ -103,7 +103,7 @@ and `02-SUMMARY.md`). The remainder is not yet planned.
 5. A seller cannot read or mutate another seller's products. *(met)*
 6. Inventory is readable and mutable through the API (CAT-01).
 7. Stock cannot go negative (CAT-01).
-8. Inventory changes are transactional against the product write (CAT-01, DI-02).
+8. Inventory changes are transactional against the product write (CAT-01).
 9. Categories support soft delete, ordering, and hierarchy (CAT-02, CAT-03).
 10. Product images are handled as uploads, not bare URL strings (CAT-04).
 
@@ -116,7 +116,7 @@ never executed, so the commerce work that follows is built on a sound data layer
 
 **Status:** not started. Source: `03-data-integrity-and-code-quality/03-CONTEXT.md`.
 
-**Depends on:** nothing. Deliberately first — its output is a prerequisite for Phase 05.
+**Depends on:** nothing. Runs third, after Phase 02 — its output is a prerequisite for Phase 05.
 
 **Plans:** not yet planned. 18 items (17 outstanding; CRIT-05 done), prioritised
 P0 → P1 → P2 in the source CONTEXT.
